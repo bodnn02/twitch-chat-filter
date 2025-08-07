@@ -23,6 +23,26 @@
             margin-bottom: 15px;
         }
 
+        .language-select {
+            margin-top: 8px;
+
+            background-color: #18181b;
+            border: 1px solid #464649;
+            border-radius: 4px;
+            color: #efeff1;
+            font-size: 11px;
+            padding: 4px 6px;
+        }
+
+        .language-select:focus {
+            border-color: #9146ff;
+            outline: none;
+        }
+
+        .header {
+            position: relative;
+        }
+
         select {
             width: 100%;
             padding: 8px;
@@ -143,36 +163,46 @@
 
 <body>
     <div class="header">
-        <h2>Twitch Chat Whitelist</h2>
-    </div>
-
-    <div class="input-group">
-        <select id="modeSelect">
-            <option value="whitelist">Whitelist (показать только выбранных)</option>
-            <option value="blacklist">Blacklist (скрыть выбранных)</option>
+        <h2 id="title">Twitch Chat Filter</h2>
+        <select id="languageSelect" class="language-select">
+            <option value="en">English</option>
+            <option value="ru">Русский</option>
         </select>
     </div>
 
     <div class="input-group">
-        <input type="text" id="usernameInput" placeholder="Введите никнейм" />
+        <select id="modeSelect">
+            <option value="whitelist" data-en="Whitelist (show only selected)"
+                data-ru="Whitelist (показать только выбранных)">Whitelist (show only selected)</option>
+            <option value="blacklist" data-en="Blacklist (hide selected)" data-ru="Blacklist (скрыть выбранных)">
+                Blacklist (hide selected)</option>
+        </select>
     </div>
 
-    <button id="addUserBtn">Добавить</button>
-    <button id="toggleFilterBtn">Включить фильтр</button>
-    <button id="viewMessagesBtn">Сохраненные сообщения</button>
+    <div class="input-group">
+        <input type="text" id="usernameInput" placeholder="Enter username" data-placeholder-en="Enter username"
+            data-placeholder-ru="Введите никнейм" />
+    </div>
+
+    <button id="addUserBtn" data-en="Add" data-ru="Добавить">Add</button>
+    <button id="toggleFilterBtn" data-en="Enable filter" data-ru="Включить фильтр">Enable filter</button>
+    <button id="viewMessagesBtn" data-en="Saved messages" data-ru="Сохраненные сообщения">Saved messages</button>
 
     <div class="user-list" id="userList"></div>
 
     <div class="stats">
-        <div>Режим: <span id="currentMode">Whitelist</span></div>
-        <div>Пользователей в списке: <span id="userCount">0</span></div>
-        <div>Скрыто сообщений: <span id="messageCount">0</span></div>
-        <div>Сохранено сообщений: <span id="savedCount">0</span></div>
+        <div><span data-en="Mode" data-ru="Режим">Mode</span>: <span id="currentMode">Whitelist</span></div>
+        <div><span data-en="Users in list" data-ru="Пользователей в списке">Users in list</span>: <span
+                id="userCount">0</span></div>
+        <div><span data-en="Hidden messages" data-ru="Скрыто сообщений">Hidden messages</span>: <span
+                id="messageCount">0</span></div>
+        <div><span data-en="Saved messages" data-ru="Сохранено сообщений">Saved messages</span>: <span
+                id="savedCount">0</span></div>
     </div>
 
     <div class="saved-messages" id="savedMessages"></div>
 
-    <button id="clearAllBtn" class="clear-all-btn">Очистить все</button>
+    <button id="clearAllBtn" class="clear-all-btn" data-en="Clear all" data-ru="Очистить все">Clear all</button>
 
     <script src="popup.js"></script>
 </body>

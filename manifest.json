@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "Twitch Chat Whitelist",
-    "version": "1.0",
-    "description": "Показывает только сообщения от разрешенных пользователей в чате Twitch",
+    "name": "Twitch Chat Filter",
+    "version": "1.1",
+    "description": "Advanced chat filtering for Twitch streams with dual chat view and localization support",
     "permissions": [
         "storage",
         "activeTab"

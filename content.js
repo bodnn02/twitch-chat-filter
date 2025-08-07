@@ -1,4 +1,3 @@
-// Twitch Chat Filter Content Script
 class TwitchChatFilter {
     constructor() {
         this.usersList = [];
@@ -11,6 +10,21 @@ class TwitchChatFilter {
         this.customChatContainer = null;
         this.processedMessages = new Set();
         this.filteredMessages = [];
+        this.currentLanguage = 'en';
+
+        // Переводы для интерфейса
+        this.translations = {
+            en: {
+                filteredChat: 'Filtered Chat',
+                originalChat: 'Original Chat',
+                messages: 'messages'
+            },
+            ru: {
+                filteredChat: 'Фильтрованный чат',
+                originalChat: 'Оригинальный чат',
+                messages: 'сообщений'
+            }
+        };
 
         this.init();
     }
@@ -24,22 +38,62 @@ class TwitchChatFilter {
                 this.usersList = request.usersList || [];
                 this.isFilterEnabled = request.isFilterEnabled;
                 this.mode = request.mode || 'whitelist';
+                this.currentLanguage = request.language || 'en';
+                this.updateChatHeaders();
                 this.rebuildCustomChat();
             }
         });
+    }
+
+    updateChatContent() {
+        const t = this.translations[this.currentLanguage];
+        this.customChatContainer.innerHTML = `
+      <div class="twitch-filter-header">
+        <span>${t.filteredChat} (${this.mode})</span>
+        <span class="twitch-filter-count">0 ${t.messages}</span>
+      </div>
+      <div class="twitch-filter-messages"></div>
+    `;
+    }
+
+    updateOriginalChatContent(container) {
+        const t = this.translations[this.currentLanguage];
+        container.innerHTML = `
+      <div class="twitch-original-header">
+        <span>${t.originalChat}</span>
+        <button class="twitch-toggle-original" title="Toggle original chat">👁</button>
+      </div>
+      <div class="twitch-original-content"></div>
+    `;
+    }
+
+    updateChatHeaders() {
+        if (!this.customChatContainer) return;
+
+        const t = this.translations[this.currentLanguage];
+        const filterHeader = this.customChatContainer.querySelector('.twitch-filter-header span:first-child');
+        if (filterHeader) {
+            filterHeader.textContent = `${t.filteredChat} (${this.mode})`;
+        }
+
+        const originalHeader = document.querySelector('#twitch-original-chat .twitch-original-header span:first-child');
+        if (originalHeader) {
+            originalHeader.textContent = t.originalChat;
+        }
     }
 
     async loadSettings() {
         return new Promise((resolve) => {
             chrome.storage.sync.get([
                 'usersList', 'isFilterEnabled', 'hiddenMessagesCount',
-                'savedMessagesCount', 'mode'
+                'savedMessagesCount', 'mode', 'language'
             ], (result) => {
                 this.usersList = result.usersList || [];
                 this.isFilterEnabled = result.isFilterEnabled !== false;
                 this.hiddenMessagesCount = result.hiddenMessagesCount || 0;
                 this.savedMessagesCount = result.savedMessagesCount || 0;
                 this.mode = result.mode || 'whitelist';
+                this.currentLanguage = result.language || 'en';
                 resolve();
             });
         });
@@ -108,24 +162,12 @@ class TwitchChatFilter {
         // Создаем контейнер для фильтрованного чата
         this.customChatContainer = document.createElement('div');
         this.customChatContainer.id = 'twitch-filter-chat';
-        this.customChatContainer.innerHTML = `
-      <div class="twitch-filter-header">
-        <span>Filtered Chat (${this.mode})</span>
-        <span class="twitch-filter-count">0 messages</span>
-      </div>
-      <div class="twitch-filter-messages"></div>
-    `;
+        this.updateChatContent();
 
         // Создаем контейнер для оригинального чата
         const originalChatContainer = document.createElement('div');
         originalChatContainer.id = 'twitch-original-chat';
-        originalChatContainer.innerHTML = `
-      <div class="twitch-original-header">
-        <span>Original Chat</span>
-        <button class="twitch-toggle-original" title="Toggle original chat">👁</button>
-      </div>
-      <div class="twitch-original-content"></div>
-    `;
+        this.updateOriginalChatContent(originalChatContainer);
 
         // Перемещаем оригинальный чат в наш контейнер
         const originalContent = originalChatContainer.querySelector('.twitch-original-content');
@@ -143,6 +185,10 @@ class TwitchChatFilter {
         }
 
         // Добавляем функциональность переключения оригинального чата
+        this.setupToggleButton(originalChatContainer, originalContent);
+    }
+
+    setupToggleButton(originalChatContainer, originalContent) {
         const toggleBtn = originalChatContainer.querySelector('.twitch-toggle-original');
         let originalVisible = true;
 
@@ -152,10 +198,11 @@ class TwitchChatFilter {
             toggleBtn.textContent = originalVisible ? '👁' : '🙈';
 
             // Обновляем размеры
+            const dualContainer = document.getElementById('twitch-dual-chat-container');
             if (originalVisible) {
-                dualChatContainer.classList.remove('original-hidden');
+                dualContainer.classList.remove('original-hidden');
             } else {
-                dualChatContainer.classList.add('original-hidden');
+                dualContainer.classList.add('original-hidden');
             }
         });
     }
@@ -307,12 +354,13 @@ class TwitchChatFilter {
         });
 
         // Обновляем счетчик
-        countElement.textContent = `${displayMessages.length} messages`;
+        countElement.textContent = `${displayMessages.length} ${this.translations[this.currentLanguage].messages}`;
 
         // Обновляем заголовок с режимом
         const headerSpan = this.customChatContainer.querySelector('.twitch-filter-header span');
         if (headerSpan) {
-            headerSpan.textContent = `Filtered Chat (${this.mode})`;
+            const t = this.translations[this.currentLanguage];
+            headerSpan.textContent = `${t.filteredChat} (${this.mode})`;
         }
 
         // Устанавливаем атрибут режима для стилизации
