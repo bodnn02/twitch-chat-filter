@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 300px;
+            min-height: 400px;
+            padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0e0e10;
+            color: #efeff1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #9146ff;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            background-color: #18181b;
+            border: 1px solid #464649;
+            border-radius: 4px;
+            color: #efeff1;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        select:focus {
+            border-color: #9146ff;
+            outline: none;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            background-color: #18181b;
+            border: 1px solid #464649;
+            border-radius: 4px;
+            color: #efeff1;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus {
+            border-color: #9146ff;
+            outline: none;
+        }
+
+        button {
+            background-color: #9146ff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        button:hover {
+            background-color: #772ce8;
+        }
+
+        .user-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            margin-bottom: 5px;
+            background-color: #18181b;
+            border-radius: 4px;
+        }
+
+        .remove-btn {
+            background-color: #eb0400;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .remove-btn:hover {
+            background-color: #c70039;
+        }
+
+        .stats {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #18181b;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .saved-messages {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .message-item {
+            background-color: #18181b;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .message-author {
+            font-weight: bold;
+            color: #9146ff;
+        }
+
+        .message-time {
+            color: #adadb8;
+            font-size: 10px;
+        }
+
+        .clear-all-btn {
+            background-color: #eb0400;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .clear-all-btn:hover {
+            background-color: #c70039;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h2>Twitch Chat Whitelist</h2>
+    </div>
+
+    <div class="input-group">
+        <select id="modeSelect">
+            <option value="whitelist">Whitelist (показать только выбранных)</option>
+            <option value="blacklist">Blacklist (скрыть выбранных)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="usernameInput" placeholder="Введите никнейм" />
+    </div>
+
+    <button id="addUserBtn">Добавить</button>
+    <button id="toggleFilterBtn">Включить фильтр</button>
+    <button id="viewMessagesBtn">Сохраненные сообщения</button>
+
+    <div class="user-list" id="userList"></div>
+
+    <div class="stats">
+        <div>Режим: <span id="currentMode">Whitelist</span></div>
+        <div>Пользователей в списке: <span id="userCount">0</span></div>
+        <div>Скрыто сообщений: <span id="messageCount">0</span></div>
+        <div>Сохранено сообщений: <span id="savedCount">0</span></div>
+    </div>
+
+    <div class="saved-messages" id="savedMessages"></div>
+
+    <button id="clearAllBtn" class="clear-all-btn">Очистить все</button>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
