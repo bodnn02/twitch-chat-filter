@@ -65,18 +65,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // Загрузка настроек
-    chrome.storage.sync.get([
-        'usersList', 'isFilterEnabled', 'hiddenMessagesCount',
-        'mode', 'savedWhitelistMessages', 'savedMessagesCount', 'language'
-    ], function (result) {
-        usersList = result.usersList || [];
-        isFilterEnabled = result.isFilterEnabled !== false;
-        hiddenMessagesCount = result.hiddenMessagesCount || 0;
-        savedMessagesCount = result.savedMessagesCount || 0;
-        mode = result.mode || 'whitelist';
-        savedWhitelistMessages = result.savedWhitelistMessages || [];
-        currentLanguage = result.language || 'en';
+    // Загрузка настроек: настройки — в sync (синхронизируются между
+    // устройствами), объемные данные — в local (у sync лимит 100 КБ)
+    Promise.all([
+        chrome.storage.sync.get(['usersList', 'isFilterEnabled', 'mode', 'language']),
+        chrome.storage.local.get(['hiddenMessagesCount', 'savedMessagesCount', 'savedWhitelistMessages'])
+    ]).then(([syncData, localData]) => {
+        usersList = syncData.usersList || [];
+        isFilterEnabled = syncData.isFilterEnabled !== false;
+        mode = syncData.mode || 'whitelist';
+        currentLanguage = syncData.language || 'en';
+
+        hiddenMessagesCount = localData.hiddenMessagesCount || 0;
+        savedMessagesCount = localData.savedMessagesCount || 0;
+        savedWhitelistMessages = localData.savedWhitelistMessages || [];
 
         languageSelect.value = currentLanguage;
         modeSelect.value = mode;
@@ -86,12 +88,29 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSavedMessages();
     });
 
+    // Живое обновление статистики, пока popup открыт
+    chrome.storage.onChanged.addListener(function (changes, areaName) {
+        if (areaName !== 'local') return;
+
+        if (changes.hiddenMessagesCount) {
+            hiddenMessagesCount = changes.hiddenMessagesCount.newValue || 0;
+        }
+        if (changes.savedMessagesCount) {
+            savedMessagesCount = changes.savedMessagesCount.newValue || 0;
+        }
+        if (changes.savedWhitelistMessages) {
+            savedWhitelistMessages = changes.savedWhitelistMessages.newValue || [];
+            updateSavedMessages();
+        }
+
+        updateUI();
+    });
+
     // Изменение языка
     languageSelect.addEventListener('change', function () {
         currentLanguage = languageSelect.value;
         updateLanguage();
         saveSettings();
-        updateContentScript();
     });
 
     // Функция обновления языка
@@ -115,6 +134,9 @@ document.addEventListener('DOMContentLoaded', function () {
         addUserBtn.textContent = t.add;
         clearAllBtn.textContent = t.clearAll;
 
+        // Обновляем список (кнопки «Удалить»)
+        updateUserList();
+
         // Обновляем статистику
         updateUI();
     }
@@ -125,7 +147,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateLanguage();
         saveSettings();
         updateUI();
-        updateContentScript();
     });
 
     // Добавление пользователя
@@ -142,9 +163,10 @@ document.addEventListener('DOMContentLoaded', function () {
             usersList.push(username);
             saveSettings();
             updateUserList();
+            updateUI();
             usernameInput.value = '';
-            updateContentScript();
         }
+        usernameInput.focus();
     }
 
     // Переключение фильтра
@@ -152,15 +174,14 @@ document.addEventListener('DOMContentLoaded', function () {
         isFilterEnabled = !isFilterEnabled;
         saveSettings();
         updateUI();
-        updateContentScript();
     });
 
     // Просмотр сохраненных сообщений
     viewMessagesBtn.addEventListener('click', function () {
         const t = translations[currentLanguage];
-        const isVisible = savedMessages.style.display !== 'none';
+        const isVisible = savedMessages.style.display !== 'none' && savedMessages.style.display !== '';
         savedMessages.style.display = isVisible ? 'none' : 'block';
-        viewMessagesBtn.textContent = isVisible ? t.showMessages : t.hideMessages;
+        viewMessagesBtn.textContent = isVisible ? t.savedMessagesBtn : t.hideMessages;
     });
 
     // Удаление пользователя
@@ -168,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
         usersList = usersList.filter(user => user !== username);
         saveSettings();
         updateUserList();
-        updateContentScript();
+        updateUI();
     }
 
     // Очистка всех данных
@@ -180,23 +201,24 @@ document.addEventListener('DOMContentLoaded', function () {
             savedMessagesCount = 0;
             savedWhitelistMessages = [];
             saveSettings();
+            chrome.storage.local.set({
+                hiddenMessagesCount: 0,
+                savedMessagesCount: 0,
+                savedWhitelistMessages: []
+            });
             updateUserList();
             updateUI();
             updateSavedMessages();
-            updateContentScript();
         }
     });
 
     // Обновление интерфейса
     function updateUI() {
         const t = translations[currentLanguage];
-        const modeText = mode === 'whitelist' ? 'Whitelist' : 'Blacklist';
-        currentMode.textContent = modeText;
+        currentMode.textContent = mode === 'whitelist' ? 'Whitelist' : 'Blacklist';
 
         toggleFilterBtn.textContent = isFilterEnabled ? t.disableFilter : t.enableFilter;
         toggleFilterBtn.style.backgroundColor = isFilterEnabled ? '#eb0400' : '#00ad03';
-
-        viewMessagesBtn.textContent = t.savedMessagesBtn;
 
         userCount.textContent = usersList.length;
         messageCount.textContent = hiddenMessagesCount;
@@ -212,31 +234,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Обновление списка пользователей
+    // Обновление списка пользователей (безопасный рендер без innerHTML)
     function updateUserList() {
         const t = translations[currentLanguage];
-        userList.innerHTML = '';
+        userList.textContent = '';
 
         usersList.forEach(username => {
             const userItem = document.createElement('div');
             userItem.className = 'user-item';
 
-            userItem.innerHTML = `
-        <span>${username}</span>
-        <button class="remove-btn" data-username="${username}">${t.remove}</button>
-      `;
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = username;
 
-            userItem.querySelector('.remove-btn').addEventListener('click', function () {
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = t.remove;
+            removeBtn.addEventListener('click', function () {
                 removeUser(username);
             });
 
+            userItem.append(nameSpan, removeBtn);
             userList.appendChild(userItem);
         });
     }
 
-    // Обновление сохраненных сообщений
+    // Обновление сохраненных сообщений (безопасный рендер без innerHTML)
     function updateSavedMessages() {
-        savedMessages.innerHTML = '';
+        savedMessages.textContent = '';
 
         // Показываем последние 50 сообщений
         const recentMessages = savedWhitelistMessages.slice(-50).reverse();
@@ -245,61 +269,30 @@ document.addEventListener('DOMContentLoaded', function () {
             const messageItem = document.createElement('div');
             messageItem.className = 'message-item';
 
-            messageItem.innerHTML = `
-        <div class="message-author">${msg.username}</div>
-        <div class="message-time">${new Date(msg.timestamp).toLocaleString()}</div>
-        <div>${msg.text}</div>
-      `;
+            const author = document.createElement('div');
+            author.className = 'message-author';
+            author.textContent = msg.username;
 
+            const time = document.createElement('div');
+            time.className = 'message-time';
+            time.textContent = new Date(msg.timestamp).toLocaleString();
+
+            const text = document.createElement('div');
+            text.textContent = msg.text;
+
+            messageItem.append(author, time, text);
             savedMessages.appendChild(messageItem);
         });
     }
 
-    // Сохранение настроек
+    // Сохранение настроек. Content script подхватывает изменения через
+    // chrome.storage.onChanged — во всех открытых вкладках Twitch сразу
     function saveSettings() {
         chrome.storage.sync.set({
             usersList: usersList,
             isFilterEnabled: isFilterEnabled,
-            hiddenMessagesCount: hiddenMessagesCount,
-            savedMessagesCount: savedMessagesCount,
             mode: mode,
-            savedWhitelistMessages: savedWhitelistMessages,
             language: currentLanguage
         });
     }
-
-    // Обновление content script
-    function updateContentScript() {
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            if (tabs[0] && tabs[0].url.includes('twitch.tv')) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    action: 'updateFilter',
-                    usersList: usersList,
-                    isFilterEnabled: isFilterEnabled,
-                    mode: mode,
-                    language: currentLanguage
-                });
-            }
-        });
-    }
-
-    // Получение обновлений от content script
-    chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-        if (request.action === 'updateStats') {
-            hiddenMessagesCount = request.hiddenCount || hiddenMessagesCount;
-            savedMessagesCount = request.savedCount || savedMessagesCount;
-
-            if (request.newMessage) {
-                savedWhitelistMessages.push(request.newMessage);
-                // Ограничиваем количество сохраненных сообщений (последние 1000)
-                if (savedWhitelistMessages.length > 1000) {
-                    savedWhitelistMessages = savedWhitelistMessages.slice(-1000);
-                }
-                updateSavedMessages();
-            }
-
-            updateUI();
-            saveSettings();
-        }
-    });
 });

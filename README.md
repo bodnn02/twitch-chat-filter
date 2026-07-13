@@ -200,6 +200,25 @@ twitch-chat-filter/
 
 ## 🔄 Version History
 
+### v1.3.0
+- Fixed live chat filtering (updated selectors for the current Twitch DOM: `.chat-line__message`)
+- Resizable split between filtered and original chat (drag the divider; ratio is remembered)
+- Pop-out buttons: filtered chat opens in its own window, original chat uses Twitch's native popout
+- Your own messages are always shown in the filtered chat regardless of mode
+- Filtering matches users by login (`data-a-user`) instead of the display name
+
+### v1.2.0
+- Security: chat messages and usernames are rendered as plain text (fixed HTML injection)
+- Fixed duplicate messages in the filtered chat (deduplication no longer depends on timestamps)
+- Saved messages and counters moved to `chrome.storage.local` (no more sync quota errors); writes are batched
+- Saved messages are persisted even when the popup is closed
+- Settings now propagate to all open Twitch tabs via `storage.onChanged` (removed `activeTab` permission)
+- Toggling the filter off now shows all messages in the filtered chat
+- Incremental message rendering instead of rebuilding the whole chat on every message
+- Proper cleanup on Twitch SPA navigation (no duplicated containers or leaked observers)
+- Auto-scroll pauses when you scroll up to read history
+- Localized display names ("Name (login)") are matched by login
+
 ### v1.0.0
 - Initial release
 - Basic whitelist/blacklist filtering

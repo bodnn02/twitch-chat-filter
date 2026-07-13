@@ -7,13 +7,103 @@
     gap: 8px;
 }
 
-/* Когда оригинальный чат скрыт */
-#twitch-dual-chat-container.original-hidden #twitch-filter-chat {
-    height: 100%;
+/* Верхние панели Twitch (закрепленные сообщения, cheering, hype train)
+   остаются в DOM у Twitch (физический перенос ломает React), но визуально
+   выводятся поверх верха колонки чата — над фильтрованным чатом */
+#twitch-dual-chat-container {
+    position: relative;
 }
 
+.twitch-original-content section.chat-room,
+.twitch-original-content .chat-room__content {
+    position: static !important;
+}
+
+.twitch-original-content .chat-room__content > div:has([class*="community-highlight"]),
+.twitch-original-content .chat-room__content > div:has([class*="bitsLeaderboard"]),
+.twitch-original-content .chat-room__content > div:has([class*="hype-train"]) {
+    position: absolute !important;
+    /* Ниже заголовка фильтрованного чата, чтобы не закрывать его кнопки */
+    top: 30px;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 35%;
+    overflow-y: auto;
+}
+
+/* Заголовок фильтрованного чата всегда кликабелен */
+.twitch-filter-header {
+    position: relative;
+    z-index: 60;
+}
+
+/* Разделитель для регулировки размеров чатов */
+#twitch-chat-resizer {
+    flex: 0 0 6px;
+    cursor: ns-resize;
+    background-color: #2f2f35;
+    border-radius: 3px;
+    transition: background-color 0.15s;
+}
+
+#twitch-chat-resizer:hover,
+#twitch-chat-resizer:active {
+    background-color: #9146ff;
+}
+
+/* Разделитель не нужен, когда один из чатов скрыт */
+#twitch-dual-chat-container.original-hidden #twitch-chat-resizer,
+#twitch-dual-chat-container.filtered-hidden #twitch-chat-resizer {
+    display: none;
+}
+
+/* Когда один чат скрыт, второй занимает все место.
+   !important нужен, чтобы перекрыть инлайн-пропорции разделителя */
+#twitch-dual-chat-container.original-hidden #twitch-filter-chat {
+    flex: 1 1 auto !important;
+}
+
+#twitch-dual-chat-container.filtered-hidden #twitch-original-chat {
+    flex: 1 1 auto !important;
+}
+
+/* Когда оригинальный чат скрыт: его блок сворачивается (фильтрованный
+   занимает все место), но поле ввода сообщения остается доступным —
+   прячется только список сообщений */
 #twitch-dual-chat-container.original-hidden #twitch-original-chat {
-    height: auto;
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+}
+
+#twitch-dual-chat-container.original-hidden .twitch-original-content {
+    flex: 0 0 auto;
+}
+
+#twitch-dual-chat-container.original-hidden .twitch-original-content [data-a-target="chat-scroller"],
+#twitch-dual-chat-container.original-hidden .twitch-original-content .video-chat__message-list-wrapper,
+#twitch-dual-chat-container.original-hidden .twitch-original-content .chat-scrollable-area__message-container,
+#twitch-dual-chat-container.original-hidden .twitch-original-content [role="log"] {
+    display: none !important;
+}
+
+/* Контейнеры Twitch не должны резервировать высоту под скрытый список */
+#twitch-dual-chat-container.original-hidden .twitch-original-content .chat-shell,
+#twitch-dual-chat-container.original-hidden .twitch-original-content .chat-room,
+#twitch-dual-chat-container.original-hidden .twitch-original-content .chat-room__content {
+    height: auto !important;
+    min-height: 0 !important;
+}
+
+/* Когда фильтрованный чат скрыт: сворачивается до заголовка,
+   оригинальный чат занимает все место */
+#twitch-dual-chat-container.filtered-hidden #twitch-filter-chat {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+}
+
+#twitch-dual-chat-container.filtered-hidden .twitch-filter-messages {
+    display: none;
 }
 
 /* Стили для фильтрованного чата */
@@ -25,7 +115,8 @@
     display: flex;
     flex-direction: column;
     font-family: Inter, Roobert, "Helvetica Neue", Helvetica, Arial, sans-serif;
-    min-height: 200px;
+    /* При нехватке места фильтрованный чат уступает высоту полю ввода */
+    min-height: 40px;
 }
 
 /* Стили для оригинального чата */
@@ -36,7 +127,7 @@
     border-radius: 4px;
     display: flex;
     flex-direction: column;
-    min-height: 200px;
+    min-height: 80px;
 }
 
 .twitch-original-content {
@@ -62,7 +153,8 @@
     background-color: #1a1a1d;
 }
 
-.twitch-toggle-original {
+.twitch-toggle-original,
+.twitch-toggle-filtered {
     background: none;
     border: none;
     color: #efeff1;
@@ -72,8 +164,15 @@
     font-size: 14px;
 }
 
-.twitch-toggle-original:hover {
+.twitch-toggle-original:hover,
+.twitch-toggle-filtered:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+.twitch-filter-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .twitch-filter-count {
@@ -209,10 +308,38 @@
         font-size: 10px;
     }
 
-    #twitch-filter-chat,
-    #twitch-original-chat {
-        min-height: 150px;
+    #twitch-filter-chat {
+        min-height: 40px;
     }
+}
+
+/* Поле ввода сообщения всегда видимо: при нехватке места сжимается
+   только список сообщений, а не поле ввода */
+.twitch-original-content section.chat-room,
+.twitch-original-content .chat-room__content {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-width: 100%;
+}
+
+/* Кнопки поля ввода не должны выходить за границы по ширине */
+.twitch-original-content .chat-input {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.twitch-original-content .chat-room__content {
+    display: flex;
+    flex-direction: column;
+}
+
+.twitch-original-content .chat-room__content > [class*="chat-list"] {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+}
+
+.twitch-original-content .chat-input {
+    flex-shrink: 0 !important;
 }
 
 /* Стилизация оригинального чата внутри нашего контейнера */
@@ -239,9 +366,8 @@
         flex-direction: column;
     }
 
-    #twitch-filter-chat,
-    #twitch-original-chat {
-        min-height: 120px;
+    #twitch-filter-chat {
+        min-height: 40px;
     }
 
     .twitch-filter-header span:first-child,
