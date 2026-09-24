@@ -1,208 +1,412 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
+    <title>Twitch Chat Filter</title>
     <style>
+        :root {
+            --bg: #0e0e10;
+            --surface: #18181b;
+            --surface-2: #1f1f23;
+            --border: #2f2f35;
+            --text: #efeff1;
+            --text-muted: #adadb8;
+            --accent: #9146ff;
+            --accent-hover: #772ce8;
+            --whitelist: #00ad03;
+            --blacklist: #eb0400;
+            --radius: 6px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            width: 300px;
-            min-height: 400px;
-            padding: 15px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #0e0e10;
-            color: #efeff1;
+            width: 320px;
+            margin: 0;
+            padding: 14px;
+            background-color: var(--bg);
+            color: var(--text);
+            font: 13px/1.4 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #9146ff;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        .language-select {
-            margin-top: 8px;
-
-            background-color: #18181b;
-            border: 1px solid #464649;
-            border-radius: 4px;
-            color: #efeff1;
-            font-size: 11px;
-            padding: 4px 6px;
-        }
-
-        .language-select:focus {
-            border-color: #9146ff;
-            outline: none;
-        }
-
-        .header {
-            position: relative;
-        }
-
+        button,
+        input,
         select {
-            width: 100%;
-            padding: 8px;
-            background-color: #18181b;
-            border: 1px solid #464649;
-            border-radius: 4px;
-            color: #efeff1;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-        }
-
-        select:focus {
-            border-color: #9146ff;
-            outline: none;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            background-color: #18181b;
-            border: 1px solid #464649;
-            border-radius: 4px;
-            color: #efeff1;
-            box-sizing: border-box;
-        }
-
-        input[type="text"]:focus {
-            border-color: #9146ff;
-            outline: none;
+            font: inherit;
+            color: inherit;
         }
 
         button {
-            background-color: #9146ff;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
             cursor: pointer;
-            margin-right: 5px;
-            margin-bottom: 5px;
         }
 
-        button:hover {
-            background-color: #772ce8;
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 1px;
         }
 
+        .section {
+            margin-top: 14px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* Шапка */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .title {
+            margin: 0;
+            color: var(--accent);
+            font-size: 16px;
+        }
+
+        .language-select {
+            padding: 3px 6px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* Переключатель фильтра */
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 12px;
+            padding: 8px 10px;
+            background-color: var(--surface);
+            border-radius: var(--radius);
+        }
+
+        .switch {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            padding: 0;
+            border: none;
+            border-radius: 10px;
+            background-color: #464649;
+            transition: background-color 0.15s;
+        }
+
+        .switch::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: #fff;
+            transition: transform 0.15s;
+        }
+
+        .switch[aria-checked="true"] {
+            background-color: var(--accent);
+        }
+
+        .switch[aria-checked="true"]::after {
+            transform: translateX(16px);
+        }
+
+        /* Режим: whitelist / blacklist */
+        .segmented {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            padding: 3px;
+            background-color: var(--surface);
+            border-radius: var(--radius);
+        }
+
+        .segmented button {
+            padding: 6px 4px;
+            border: none;
+            border-radius: 4px;
+            background: none;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .segmented button[aria-checked="true"][data-mode="whitelist"] {
+            background-color: var(--whitelist);
+            color: #fff;
+        }
+
+        .segmented button[aria-checked="true"][data-mode="blacklist"] {
+            background-color: var(--blacklist);
+            color: #fff;
+        }
+
+        .mode-hint {
+            margin: 6px 2px 0;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        /* Добавление ника */
+        .add-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .add-row input {
+            flex: 1;
+            min-width: 0;
+            padding: 7px 9px;
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .add-row input:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+
+        .btn {
+            padding: 7px 12px;
+            border: none;
+            border-radius: var(--radius);
+            background-color: var(--accent);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-link {
+            padding: 0;
+            border: none;
+            background: none;
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+
+        .btn-link:hover {
+            text-decoration: underline;
+        }
+
+        .btn-link:disabled {
+            color: var(--text-muted);
+            cursor: default;
+            text-decoration: none;
+        }
+
+        .btn-danger {
+            width: 100%;
+            margin-top: 14px;
+            background: none;
+            border: 1px solid var(--blacklist);
+            color: var(--blacklist);
+        }
+
+        .btn-danger:hover {
+            background-color: var(--blacklist);
+            color: #fff;
+        }
+
+        /* Список ников */
         .user-list {
-            margin-top: 15px;
-            max-height: 200px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-height: 160px;
             overflow-y: auto;
+            scrollbar-width: thin;
         }
 
         .user-item {
-            display: flex;
-            justify-content: space-between;
+            display: inline-flex;
             align-items: center;
-            padding: 5px;
-            margin-bottom: 5px;
-            background-color: #18181b;
-            border-radius: 4px;
+            gap: 2px;
+            max-width: 100%;
+            padding: 2px 2px 2px 8px;
+            background-color: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+
+        .user-name {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
 
         .remove-btn {
-            background-color: #eb0400;
-            padding: 4px 8px;
-            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            background: none;
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1;
         }
 
         .remove-btn:hover {
-            background-color: #c70039;
+            background-color: var(--blacklist);
+            color: #fff;
         }
 
-        .stats {
-            margin-top: 15px;
+        .empty {
+            width: 100%;
             padding: 10px;
-            background-color: #18181b;
-            border-radius: 4px;
+            color: var(--text-muted);
             font-size: 12px;
             text-align: center;
+            background-color: var(--surface);
+            border-radius: var(--radius);
+        }
+
+        /* Статистика */
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .stat {
+            padding: 8px 10px;
+            background-color: var(--surface);
+            border-radius: var(--radius);
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        /* Сохранённые сообщения */
+        details summary {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
         }
 
         .saved-messages {
             max-height: 200px;
+            margin-top: 6px;
             overflow-y: auto;
-            margin-top: 10px;
-            display: none;
+            scrollbar-width: thin;
         }
 
         .message-item {
-            background-color: #18181b;
-            padding: 8px;
-            margin-bottom: 5px;
-            border-radius: 4px;
+            margin-bottom: 4px;
+            padding: 6px 8px;
+            background-color: var(--surface);
+            border-radius: var(--radius);
             font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .message-meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
         }
 
         .message-author {
-            font-weight: bold;
-            color: #9146ff;
+            color: var(--accent);
+            font-weight: 700;
         }
 
         .message-time {
-            color: #adadb8;
+            color: var(--text-muted);
             font-size: 10px;
-        }
-
-        .clear-all-btn {
-            background-color: #eb0400;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .clear-all-btn:hover {
-            background-color: #c70039;
+            white-space: nowrap;
         }
     </style>
 </head>
 
 <body>
     <div class="header">
-        <h2 id="title">Twitch Chat Filter</h2>
-        <select id="languageSelect" class="language-select">
+        <h1 class="title" data-i18n="title">Twitch Chat Filter</h1>
+        <select id="languageSelect" class="language-select" aria-label="Language">
             <option value="en">English</option>
             <option value="ru">Русский</option>
         </select>
     </div>
 
-    <div class="input-group">
-        <select id="modeSelect">
-            <option value="whitelist" data-en="Whitelist (show only selected)"
-                data-ru="Whitelist (показать только выбранных)">Whitelist (show only selected)</option>
-            <option value="blacklist" data-en="Blacklist (hide selected)" data-ru="Blacklist (скрыть выбранных)">
-                Blacklist (hide selected)</option>
-        </select>
+    <div class="switch-row">
+        <span id="filterStateLabel"></span>
+        <button id="toggleFilterBtn" class="switch" role="switch" aria-checked="true"
+            aria-labelledby="filterStateLabel"></button>
     </div>
 
-    <div class="input-group">
-        <input type="text" id="usernameInput" placeholder="Enter username" data-placeholder-en="Enter username"
-            data-placeholder-ru="Введите никнейм" />
+    <div class="section">
+        <div class="section-title" data-i18n="mode">Mode</div>
+        <div class="segmented" role="radiogroup">
+            <button type="button" role="radio" data-mode="whitelist" data-i18n="whitelist">Whitelist</button>
+            <button type="button" role="radio" data-mode="blacklist" data-i18n="blacklist">Blacklist</button>
+        </div>
+        <p class="mode-hint" id="modeHint"></p>
     </div>
 
-    <button id="addUserBtn" data-en="Add" data-ru="Добавить">Add</button>
-    <button id="toggleFilterBtn" data-en="Enable filter" data-ru="Включить фильтр">Enable filter</button>
-    <button id="viewMessagesBtn" data-en="Saved messages" data-ru="Сохраненные сообщения">Saved messages</button>
-
-    <div class="user-list" id="userList"></div>
-
-    <div class="stats">
-        <div><span data-en="Mode" data-ru="Режим">Mode</span>: <span id="currentMode">Whitelist</span></div>
-        <div><span data-en="Users in list" data-ru="Пользователей в списке">Users in list</span>: <span
-                id="userCount">0</span></div>
-        <div><span data-en="Hidden messages" data-ru="Скрыто сообщений">Hidden messages</span>: <span
-                id="messageCount">0</span></div>
-        <div><span data-en="Saved messages" data-ru="Сохранено сообщений">Saved messages</span>: <span
-                id="savedCount">0</span></div>
+    <div class="section">
+        <div class="section-title">
+            <span><span data-i18n="users">Users</span> · <span id="userCount">0</span></span>
+            <button type="button" id="copyListBtn" class="btn-link" data-i18n="copyList">Copy list</button>
+        </div>
+        <div class="add-row">
+            <input type="text" id="usernameInput" autocomplete="off" spellcheck="false" />
+            <button type="button" id="addUserBtn" class="btn" data-i18n="add">Add</button>
+        </div>
+        <div class="user-list section" id="userList"></div>
     </div>
 
-    <div class="saved-messages" id="savedMessages"></div>
+    <div class="section stats">
+        <div class="stat">
+            <span class="stat-value" id="messageCount">0</span>
+            <span class="stat-label" data-i18n="hiddenMessages">Hidden messages</span>
+        </div>
+        <div class="stat">
+            <span class="stat-value" id="savedCount">0</span>
+            <span class="stat-label" data-i18n="savedMessages">Saved messages</span>
+        </div>
+    </div>
 
-    <button id="clearAllBtn" class="clear-all-btn" data-en="Clear all" data-ru="Очистить все">Clear all</button>
+    <details class="section">
+        <summary data-i18n="savedMessagesTitle">Saved messages</summary>
+        <div class="saved-messages" id="savedMessages"></div>
+    </details>
+
+    <button type="button" id="clearAllBtn" class="btn btn-danger" data-i18n="clearAll">Clear all</button>
 
     <script src="popup.js"></script>
 </body>

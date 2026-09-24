@@ -1,16 +1,17 @@
 document.addEventListener('DOMContentLoaded', function () {
     const languageSelect = document.getElementById('languageSelect');
-    const modeSelect = document.getElementById('modeSelect');
+    const modeButtons = document.querySelectorAll('.segmented [data-mode]');
+    const modeHint = document.getElementById('modeHint');
     const usernameInput = document.getElementById('usernameInput');
     const addUserBtn = document.getElementById('addUserBtn');
     const toggleFilterBtn = document.getElementById('toggleFilterBtn');
-    const viewMessagesBtn = document.getElementById('viewMessagesBtn');
+    const filterStateLabel = document.getElementById('filterStateLabel');
     const userList = document.getElementById('userList');
     const userCount = document.getElementById('userCount');
     const messageCount = document.getElementById('messageCount');
     const savedCount = document.getElementById('savedCount');
-    const currentMode = document.getElementById('currentMode');
     const clearAllBtn = document.getElementById('clearAllBtn');
+    const copyListBtn = document.getElementById('copyListBtn');
     const savedMessages = document.getElementById('savedMessages');
 
     let usersList = [];
@@ -25,48 +26,60 @@ document.addEventListener('DOMContentLoaded', function () {
     const translations = {
         en: {
             title: 'Twitch Chat Filter',
+            filterOn: 'Filter is on',
+            filterOff: 'Filter is off',
             mode: 'Mode',
-            usersInList: 'Users in list',
+            whitelist: 'Whitelist',
+            blacklist: 'Blacklist',
+            whitelistHint: 'Only messages from users in the list are shown',
+            blacklistHint: 'Messages from users in the list are hidden',
+            users: 'Users',
+            add: 'Add',
+            whitelistPlaceholder: 'Username to show',
+            blacklistPlaceholder: 'Username to hide',
+            inputHint: 'Paste several names separated by commas or spaces to add them all at once',
+            emptyList: 'The list is empty',
+            remove: 'Remove',
+            copyList: 'Copy list',
+            copied: 'Copied!',
             hiddenMessages: 'Hidden messages',
             savedMessages: 'Saved messages',
-            add: 'Add',
-            enableFilter: 'Enable filter',
-            disableFilter: 'Disable filter',
-            savedMessagesBtn: 'Saved messages',
-            showMessages: 'Show messages',
-            hideMessages: 'Hide messages',
+            savedMessagesTitle: 'Saved messages (last 50)',
+            noSavedMessages: 'No saved messages yet',
             clearAll: 'Clear all',
-            clearAllConfirm: 'Delete all users and saved messages?',
-            remove: 'Remove',
-            whitelistPlaceholder: 'Enter username to allow',
-            blacklistPlaceholder: 'Enter username to block',
-            whitelistMode: 'Whitelist (show only selected)',
-            blacklistMode: 'Blacklist (hide selected)'
+            clearAllConfirm: 'Delete all users and saved messages?'
         },
         ru: {
             title: 'Фильтр чата Twitch',
+            filterOn: 'Фильтр включён',
+            filterOff: 'Фильтр выключен',
             mode: 'Режим',
-            usersInList: 'Пользователей в списке',
+            whitelist: 'Белый список',
+            blacklist: 'Чёрный список',
+            whitelistHint: 'Показываются только сообщения пользователей из списка',
+            blacklistHint: 'Сообщения пользователей из списка скрываются',
+            users: 'Пользователи',
+            add: 'Добавить',
+            whitelistPlaceholder: 'Ник, который показывать',
+            blacklistPlaceholder: 'Ник, который скрывать',
+            inputHint: 'Вставьте несколько ников через запятую или пробел, чтобы добавить их все сразу',
+            emptyList: 'Список пуст',
+            remove: 'Удалить',
+            copyList: 'Копировать список',
+            copied: 'Скопировано!',
             hiddenMessages: 'Скрыто сообщений',
             savedMessages: 'Сохранено сообщений',
-            add: 'Добавить',
-            enableFilter: 'Включить фильтр',
-            disableFilter: 'Выключить фильтр',
-            savedMessagesBtn: 'Сохраненные сообщения',
-            showMessages: 'Показать сообщения',
-            hideMessages: 'Скрыть сообщения',
-            clearAll: 'Очистить все',
-            clearAllConfirm: 'Удалить всех пользователей и сохраненные сообщения?',
-            remove: 'Удалить',
-            whitelistPlaceholder: 'Введите никнейм для разрешения',
-            blacklistPlaceholder: 'Введите никнейм для блокировки',
-            whitelistMode: 'Whitelist (показать только выбранных)',
-            blacklistMode: 'Blacklist (скрыть выбранных)'
+            savedMessagesTitle: 'Сохранённые сообщения (последние 50)',
+            noSavedMessages: 'Сохранённых сообщений пока нет',
+            clearAll: 'Очистить всё',
+            clearAllConfirm: 'Удалить всех пользователей и сохранённые сообщения?'
         }
     };
 
+    const t = () => translations[currentLanguage] || translations.en;
+
     // Загрузка настроек: настройки — в sync (синхронизируются между
-    // устройствами), объемные данные — в local (у sync лимит 100 КБ)
+    // устройствами), объёмные данные — в local (у sync лимит 100 КБ)
     Promise.all([
         chrome.storage.sync.get(['usersList', 'isFilterEnabled', 'mode', 'language']),
         chrome.storage.local.get(['hiddenMessagesCount', 'savedMessagesCount', 'savedWhitelistMessages'])
@@ -81,11 +94,7 @@ document.addEventListener('DOMContentLoaded', function () {
         savedWhitelistMessages = localData.savedWhitelistMessages || [];
 
         languageSelect.value = currentLanguage;
-        modeSelect.value = mode;
-        updateLanguage();
-        updateUI();
-        updateUserList();
-        updateSavedMessages();
+        render();
     });
 
     // Живое обновление статистики, пока popup открыт
@@ -103,152 +112,152 @@ document.addEventListener('DOMContentLoaded', function () {
             updateSavedMessages();
         }
 
-        updateUI();
+        updateStats();
     });
 
-    // Изменение языка
     languageSelect.addEventListener('change', function () {
         currentLanguage = languageSelect.value;
-        updateLanguage();
         saveSettings();
+        render();
     });
 
-    // Функция обновления языка
-    function updateLanguage() {
-        const t = translations[currentLanguage];
-
-        // Обновляем текст элементов
-        document.getElementById('title').textContent = t.title;
-
-        // Обновляем опции в select
-        const whitelistOption = modeSelect.querySelector('option[value="whitelist"]');
-        const blacklistOption = modeSelect.querySelector('option[value="blacklist"]');
-        whitelistOption.textContent = t.whitelistMode;
-        blacklistOption.textContent = t.blacklistMode;
-
-        // Обновляем placeholder
-        const placeholder = mode === 'whitelist' ? t.whitelistPlaceholder : t.blacklistPlaceholder;
-        usernameInput.placeholder = placeholder;
-
-        // Обновляем кнопки
-        addUserBtn.textContent = t.add;
-        clearAllBtn.textContent = t.clearAll;
-
-        // Обновляем список (кнопки «Удалить»)
-        updateUserList();
-
-        // Обновляем статистику
-        updateUI();
-    }
-
-    // Изменение режима
-    modeSelect.addEventListener('change', function () {
-        mode = modeSelect.value;
-        updateLanguage();
-        saveSettings();
-        updateUI();
+    modeButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            mode = button.dataset.mode;
+            saveSettings();
+            updateModeAndFilter();
+        });
     });
 
-    // Добавление пользователя
+    toggleFilterBtn.addEventListener('click', function () {
+        isFilterEnabled = !isFilterEnabled;
+        saveSettings();
+        updateModeAndFilter();
+    });
+
     addUserBtn.addEventListener('click', addUser);
-    usernameInput.addEventListener('keypress', function (e) {
+    usernameInput.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') {
             addUser();
         }
     });
 
+    // Можно вставить сразу несколько ников (например, скопированный
+    // ранее список) — через запятую, точку с запятой или пробел
     function addUser() {
-        const username = usernameInput.value.trim().toLowerCase();
-        if (username && !usersList.includes(username)) {
-            usersList.push(username);
+        const usernames = usernameInput.value.toLowerCase().split(/[\s,;]+/).filter(Boolean);
+        const newUsers = usernames.filter((name, i) =>
+            !usersList.includes(name) && usernames.indexOf(name) === i);
+
+        if (newUsers.length) {
+            usersList.push(...newUsers);
             saveSettings();
             updateUserList();
-            updateUI();
+        }
+        if (usernames.length) {
             usernameInput.value = '';
         }
         usernameInput.focus();
     }
 
-    // Переключение фильтра
-    toggleFilterBtn.addEventListener('click', function () {
-        isFilterEnabled = !isFilterEnabled;
-        saveSettings();
-        updateUI();
-    });
-
-    // Просмотр сохраненных сообщений
-    viewMessagesBtn.addEventListener('click', function () {
-        const t = translations[currentLanguage];
-        const isVisible = savedMessages.style.display !== 'none' && savedMessages.style.display !== '';
-        savedMessages.style.display = isVisible ? 'none' : 'block';
-        viewMessagesBtn.textContent = isVisible ? t.savedMessagesBtn : t.hideMessages;
-    });
-
-    // Удаление пользователя
     function removeUser(username) {
         usersList = usersList.filter(user => user !== username);
         saveSettings();
         updateUserList();
-        updateUI();
     }
 
-    // Очистка всех данных
-    clearAllBtn.addEventListener('click', function () {
-        const t = translations[currentLanguage];
-        if (confirm(t.clearAllConfirm)) {
-            usersList = [];
-            hiddenMessagesCount = 0;
-            savedMessagesCount = 0;
-            savedWhitelistMessages = [];
-            saveSettings();
-            chrome.storage.local.set({
-                hiddenMessagesCount: 0,
-                savedMessagesCount: 0,
-                savedWhitelistMessages: []
-            });
-            updateUserList();
-            updateUI();
-            updateSavedMessages();
+    // Копирование списка в буфер обмена — для ручной резервной копии
+    // или переноса на другой компьютер
+    copyListBtn.addEventListener('click', async function () {
+        try {
+            await navigator.clipboard.writeText(usersList.join(', '));
+            copyListBtn.textContent = t().copied;
+            setTimeout(() => {
+                copyListBtn.textContent = t().copyList;
+            }, 1500);
+        } catch (error) {
+            // Буфер обмена недоступен
         }
     });
 
-    // Обновление интерфейса
-    function updateUI() {
-        const t = translations[currentLanguage];
-        currentMode.textContent = mode === 'whitelist' ? 'Whitelist' : 'Blacklist';
+    clearAllBtn.addEventListener('click', function () {
+        if (!confirm(t().clearAllConfirm)) return;
 
-        toggleFilterBtn.textContent = isFilterEnabled ? t.disableFilter : t.enableFilter;
-        toggleFilterBtn.style.backgroundColor = isFilterEnabled ? '#eb0400' : '#00ad03';
+        usersList = [];
+        hiddenMessagesCount = 0;
+        savedMessagesCount = 0;
+        savedWhitelistMessages = [];
+        saveSettings();
+        chrome.storage.local.set({
+            hiddenMessagesCount: 0,
+            savedMessagesCount: 0,
+            savedWhitelistMessages: []
+        });
+        render();
+    });
 
-        userCount.textContent = usersList.length;
-        messageCount.textContent = hiddenMessagesCount;
-        savedCount.textContent = savedMessagesCount;
+    // Полная перерисовка (загрузка, смена языка, очистка)
+    function render() {
+        const tr = t();
+        document.documentElement.lang = currentLanguage;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            el.textContent = tr[el.dataset.i18n];
+        });
+        usernameInput.title = tr.inputHint;
 
-        // Обновляем статистические лейблы
-        const statsElements = document.querySelectorAll('.stats div span:first-child');
-        if (statsElements.length >= 4) {
-            statsElements[0].textContent = t.mode;
-            statsElements[1].textContent = t.usersInList;
-            statsElements[2].textContent = t.hiddenMessages;
-            statsElements[3].textContent = t.savedMessages;
-        }
+        updateModeAndFilter();
+        updateUserList();
+        updateStats();
+        updateSavedMessages();
     }
 
-    // Обновление списка пользователей (безопасный рендер без innerHTML)
+    function updateModeAndFilter() {
+        const tr = t();
+
+        modeButtons.forEach(button => {
+            button.setAttribute('aria-checked', String(button.dataset.mode === mode));
+        });
+        modeHint.textContent = mode === 'whitelist' ? tr.whitelistHint : tr.blacklistHint;
+        usernameInput.placeholder = mode === 'whitelist' ? tr.whitelistPlaceholder : tr.blacklistPlaceholder;
+
+        toggleFilterBtn.setAttribute('aria-checked', String(isFilterEnabled));
+        filterStateLabel.textContent = isFilterEnabled ? tr.filterOn : tr.filterOff;
+    }
+
+    function updateStats() {
+        messageCount.textContent = hiddenMessagesCount;
+        savedCount.textContent = savedMessagesCount;
+    }
+
+    // Список ников (безопасный рендер без innerHTML)
     function updateUserList() {
-        const t = translations[currentLanguage];
+        const tr = t();
         userList.textContent = '';
+        userCount.textContent = usersList.length;
+        copyListBtn.disabled = usersList.length === 0;
+
+        if (usersList.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'empty';
+            empty.textContent = tr.emptyList;
+            userList.appendChild(empty);
+            return;
+        }
 
         usersList.forEach(username => {
-            const userItem = document.createElement('div');
+            const userItem = document.createElement('span');
             userItem.className = 'user-item';
 
             const nameSpan = document.createElement('span');
+            nameSpan.className = 'user-name';
             nameSpan.textContent = username;
 
             const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
             removeBtn.className = 'remove-btn';
-            removeBtn.textContent = t.remove;
+            removeBtn.textContent = '×';
+            removeBtn.title = `${tr.remove} ${username}`;
+            removeBtn.setAttribute('aria-label', removeBtn.title);
             removeBtn.addEventListener('click', function () {
                 removeUser(username);
             });
@@ -258,29 +267,39 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Обновление сохраненных сообщений (безопасный рендер без innerHTML)
+    // Сохранённые сообщения (безопасный рендер без innerHTML)
     function updateSavedMessages() {
         savedMessages.textContent = '';
 
-        // Показываем последние 50 сообщений
-        const recentMessages = savedWhitelistMessages.slice(-50).reverse();
+        if (savedWhitelistMessages.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'empty';
+            empty.textContent = t().noSavedMessages;
+            savedMessages.appendChild(empty);
+            return;
+        }
 
-        recentMessages.forEach(msg => {
+        // Показываем последние 50 сообщений, новые сверху
+        savedWhitelistMessages.slice(-50).reverse().forEach(msg => {
             const messageItem = document.createElement('div');
             messageItem.className = 'message-item';
 
-            const author = document.createElement('div');
+            const meta = document.createElement('div');
+            meta.className = 'message-meta';
+
+            const author = document.createElement('span');
             author.className = 'message-author';
             author.textContent = msg.username;
 
-            const time = document.createElement('div');
+            const time = document.createElement('span');
             time.className = 'message-time';
-            time.textContent = new Date(msg.timestamp).toLocaleString();
+            time.textContent = new Date(msg.timestamp).toLocaleString(currentLanguage);
 
             const text = document.createElement('div');
             text.textContent = msg.text;
 
-            messageItem.append(author, time, text);
+            meta.append(author, time);
+            messageItem.append(meta, text);
             savedMessages.appendChild(messageItem);
         });
     }

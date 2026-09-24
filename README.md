@@ -200,6 +200,16 @@ twitch-chat-filter/
 
 ## 🔄 Version History
 
+### v1.4.0
+- Fixed filtering when Twitch reuses chat elements for new messages (VOD chat)
+- Filtered chat shows full Twitch messages: name colors, badges, emotes, stickers, mentions
+- Clicks in the filtered chat work like in the original one: user card, emote card, message menu, VOD timestamp seek
+- Hover card with a larger image and name for badges and emotes
+- Emote-only messages are no longer dropped
+- User list is backed up on twitch.tv and restored after reinstalling the extension; list can be copied and pasted in bulk
+- Redesigned popup and chat headers (SVG icons, mode badge, empty-state hints, localized tooltips)
+- Double-click the divider to reset the 50/50 split
+
 ### v1.3.0
 - Fixed live chat filtering (updated selectors for the current Twitch DOM: `.chat-line__message`)
 - Resizable split between filtered and original chat (drag the divider; ratio is remembered)

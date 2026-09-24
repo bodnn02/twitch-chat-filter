@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "Twitch Chat Filter",
-    "version": "1.3",
+    "version": "1.4",
     "description": "Advanced chat filtering for Twitch streams with dual chat view and localization support",
     "permissions": [
         "storage"
@@ -23,9 +23,19 @@
             "run_at": "document_end"
         }
     ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "styles.css"
+            ],
+            "matches": [
+                "*://*.twitch.tv/*"
+            ]
+        }
+    ],
     "action": {
         "default_popup": "popup.html",
-        "default_title": "Twitch Chat Whitelist"
+        "default_title": "Twitch Chat Filter"
     },
     "icons": {
         "16": "icon16.png",

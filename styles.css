@@ -1,56 +1,194 @@
-/* Контейнер для двух чатов */
-#twitch-dual-chat-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    gap: 8px;
+/* ==========================================================================
+   Twitch Chat Filter — стили интерфейса на странице Twitch
+   и в отдельном окне фильтрованного чата
+   ========================================================================== */
+
+:root {
+    --tcf-bg: #0e0e10;
+    --tcf-surface: #18181b;
+    --tcf-surface-hover: rgba(255, 255, 255, 0.08);
+    --tcf-border: #2f2f35;
+    --tcf-text: #efeff1;
+    --tcf-text-muted: #adadb8;
+    --tcf-accent: #9146ff;
+    --tcf-whitelist: #00ad03;
+    --tcf-blacklist: #eb0400;
+    --tcf-radius: 6px;
+    --tcf-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+    --tcf-font: Inter, Roobert, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-/* Верхние панели Twitch (закрепленные сообщения, cheering, hype train)
-   остаются в DOM у Twitch (физический перенос ломает React), но визуально
-   выводятся поверх верха колонки чата — над фильтрованным чатом */
+/* --- Контейнер двух чатов ----------------------------------------------- */
+
 #twitch-dual-chat-container {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    font-family: var(--tcf-font);
 }
 
-.twitch-original-content section.chat-room,
-.twitch-original-content .chat-room__content {
-    position: static !important;
+/* Во время перетаскивания разделителя не выделяем текст */
+#twitch-dual-chat-container.resizing {
+    user-select: none;
+    cursor: ns-resize;
 }
 
-.twitch-original-content .chat-room__content > div:has([class*="community-highlight"]),
-.twitch-original-content .chat-room__content > div:has([class*="bitsLeaderboard"]),
-.twitch-original-content .chat-room__content > div:has([class*="hype-train"]) {
-    position: absolute !important;
-    /* Ниже заголовка фильтрованного чата, чтобы не закрывать его кнопки */
-    top: 30px;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    max-height: 35%;
-    overflow-y: auto;
+#twitch-filter-chat,
+#twitch-original-chat {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    background-color: var(--tcf-bg);
+    border: 1px solid var(--tcf-border);
+    border-radius: var(--tcf-radius);
 }
 
-/* Заголовок фильтрованного чата всегда кликабелен */
+#twitch-filter-chat {
+    /* При нехватке места фильтрованный чат уступает высоту полю ввода */
+    min-height: 40px;
+    overflow: hidden;
+}
+
+#twitch-original-chat {
+    min-height: 80px;
+}
+
+/* Цвет режима: метка в заголовке */
+#twitch-dual-chat-container[data-mode="whitelist"] {
+    --tcf-mode-color: var(--tcf-whitelist);
+}
+
+#twitch-dual-chat-container[data-mode="blacklist"] {
+    --tcf-mode-color: var(--tcf-blacklist);
+}
+
+/* --- Заголовки ------------------------------------------------------------ */
+
+.twitch-filter-header,
+.twitch-original-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 0 6px 0 12px;
+    box-sizing: border-box;
+    background-color: var(--tcf-surface);
+    border-bottom: 1px solid var(--tcf-border);
+    color: var(--tcf-text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Заголовок фильтрованного чата всегда кликабелен (поверх панелей Twitch) */
 .twitch-filter-header {
     position: relative;
     z-index: 60;
 }
 
-/* Разделитель для регулировки размеров чатов */
-#twitch-chat-resizer {
-    flex: 0 0 6px;
-    cursor: ns-resize;
-    background-color: #2f2f35;
-    border-radius: 3px;
-    transition: background-color 0.15s;
+.twitch-chat-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
 }
 
-#twitch-chat-resizer:hover,
-#twitch-chat-resizer:active {
-    background-color: #9146ff;
+.twitch-chat-title-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
+
+.twitch-filter-mode {
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border-radius: 9px;
+    background-color: var(--tcf-mode-color, var(--tcf-accent));
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+}
+
+.twitch-filter-header-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.twitch-filter-count {
+    margin-right: 6px;
+    color: var(--tcf-text-muted);
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.twitch-chat-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: var(--tcf-text-muted);
+    cursor: pointer;
+}
+
+.twitch-chat-btn:hover {
+    background-color: var(--tcf-surface-hover);
+    color: var(--tcf-text);
+}
+
+.twitch-chat-btn:focus-visible {
+    outline: 2px solid var(--tcf-accent);
+    outline-offset: -2px;
+}
+
+.twitch-chat-btn[hidden] {
+    display: none;
+}
+
+/* --- Разделитель ------------------------------------------------------------ */
+
+#twitch-chat-resizer {
+    position: relative;
+    flex: 0 0 6px;
+    cursor: ns-resize;
+    touch-action: none;
+}
+
+/* Видимая полоска тоньше области захвата */
+#twitch-chat-resizer::after {
+    content: "";
+    position: absolute;
+    left: 40%;
+    right: 40%;
+    top: 2px;
+    height: 2px;
+    border-radius: 1px;
+    background-color: var(--tcf-border);
+    transition: background-color 0.15s, left 0.15s, right 0.15s;
+}
+
+#twitch-chat-resizer:hover::after,
+#twitch-dual-chat-container.resizing #twitch-chat-resizer::after {
+    left: 0;
+    right: 0;
+    background-color: var(--tcf-accent);
+}
+
+/* --- Скрытие одного из чатов ------------------------------------------------ */
 
 /* Разделитель не нужен, когда один из чатов скрыт */
 #twitch-dual-chat-container.original-hidden #twitch-chat-resizer,
@@ -58,19 +196,25 @@
     display: none;
 }
 
-/* Когда один чат скрыт, второй занимает все место.
-   !important нужен, чтобы перекрыть инлайн-пропорции разделителя */
-#twitch-dual-chat-container.original-hidden #twitch-filter-chat {
-    flex: 1 1 auto !important;
-}
-
+/* Второй чат занимает всё место.
+   !important перекрывает инлайн-пропорции разделителя */
+#twitch-dual-chat-container.original-hidden #twitch-filter-chat,
 #twitch-dual-chat-container.filtered-hidden #twitch-original-chat {
     flex: 1 1 auto !important;
 }
 
-/* Когда оригинальный чат скрыт: его блок сворачивается (фильтрованный
-   занимает все место), но поле ввода сообщения остается доступным —
-   прячется только список сообщений */
+/* Фильтрованный чат сворачивается до заголовка */
+#twitch-dual-chat-container.filtered-hidden #twitch-filter-chat {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+}
+
+#twitch-dual-chat-container.filtered-hidden .twitch-filter-messages {
+    display: none;
+}
+
+/* Оригинальный чат сворачивается, но поле ввода сообщения остаётся
+   доступным — прячется только список сообщений */
 #twitch-dual-chat-container.original-hidden #twitch-original-chat {
     flex: 0 0 auto !important;
     min-height: 0 !important;
@@ -95,236 +239,138 @@
     min-height: 0 !important;
 }
 
-/* Когда фильтрованный чат скрыт: сворачивается до заголовка,
-   оригинальный чат занимает все место */
-#twitch-dual-chat-container.filtered-hidden #twitch-filter-chat {
-    flex: 0 0 auto !important;
-    min-height: 0 !important;
-}
+/* --- Фильтрованный чат -------------------------------------------------------- */
 
-#twitch-dual-chat-container.filtered-hidden .twitch-filter-messages {
-    display: none;
-}
-
-/* Стили для фильтрованного чата */
-#twitch-filter-chat {
-    flex: 1;
-    background-color: #0e0e10;
-    border: 1px solid #464649;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    font-family: Inter, Roobert, "Helvetica Neue", Helvetica, Arial, sans-serif;
-    /* При нехватке места фильтрованный чат уступает высоту полю ввода */
-    min-height: 40px;
-}
-
-/* Стили для оригинального чата */
-#twitch-original-chat {
-    flex: 1;
-    background-color: #0e0e10;
-    border: 1px solid #464649;
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    min-height: 80px;
-}
-
-.twitch-original-content {
-    flex: 1;
-    overflow: hidden;
-}
-
-/* Заголовки чатов */
-.twitch-filter-header,
-.twitch-original-header {
-    padding: 8px 12px;
-    background-color: #18181b;
-    border-bottom: 1px solid #464649;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: #efeff1;
-}
-
-.twitch-original-header {
-    background-color: #1a1a1d;
-}
-
-.twitch-toggle-original,
-.twitch-toggle-filtered {
-    background: none;
-    border: none;
-    color: #efeff1;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.twitch-toggle-original:hover,
-.twitch-toggle-filtered:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.twitch-filter-header-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.twitch-filter-count {
-    color: #9146ff;
-}
-
-/* Сообщения в фильтрованном чате */
 .twitch-filter-messages {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 4px 0;
-    scroll-behavior: smooth;
 }
 
-.twitch-filter-message {
-    padding: 2px 12px;
-    line-height: 20px;
-    font-size: 13px;
-    color: #efeff1;
-    word-wrap: break-word;
-    border-bottom: 1px solid transparent;
-}
-
-.twitch-filter-message:hover {
-    background-color: rgba(255, 255, 255, 0.02);
-}
-
-.twitch-filter-timestamp {
-    color: #adadb8;
-    font-size: 11px;
-    margin-right: 8px;
-    font-family: monospace;
-}
-
-.twitch-filter-username {
-    font-weight: 700;
-    margin-right: 4px;
-    cursor: pointer;
-}
-
-.twitch-filter-username:hover {
-    text-decoration: underline;
-}
-
-.twitch-filter-text {
-    color: #efeff1;
-}
-
-/* Скроллбары */
-.twitch-filter-messages::-webkit-scrollbar,
-.twitch-original-content::-webkit-scrollbar {
-    width: 6px;
-}
-
-.twitch-filter-messages::-webkit-scrollbar-track,
-.twitch-original-content::-webkit-scrollbar-track {
-    background: #18181b;
-}
-
-.twitch-filter-messages::-webkit-scrollbar-thumb,
-.twitch-original-content::-webkit-scrollbar-thumb {
-    background: #464649;
-    border-radius: 3px;
-}
-
-.twitch-filter-messages::-webkit-scrollbar-thumb:hover,
-.twitch-original-content::-webkit-scrollbar-thumb:hover {
-    background: #5c5c63;
-}
-
-/* Анимация для новых сообщений */
-.twitch-filter-message.new-message {
-    animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Цветовая индикация режимов */
-#twitch-dual-chat-container[data-mode="whitelist"] #twitch-filter-chat {
-    border-left: 3px solid #00ad03;
-}
-
-#twitch-dual-chat-container[data-mode="blacklist"] #twitch-filter-chat {
-    border-left: 3px solid #eb0400;
-}
-
-/* Пустой чат */
-.twitch-filter-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100px;
-    color: #adadb8;
+/* Подсказка в пустом чате (текст задаётся в data-empty) */
+.twitch-filter-messages:empty::before {
+    content: attr(data-empty);
+    display: block;
+    padding: 24px 16px;
+    color: var(--tcf-text-muted);
     font-size: 12px;
     text-align: center;
 }
 
-.twitch-filter-empty-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-    opacity: 0.5;
+/* Внутри — копия сообщения Twitch со своими отступами и стилями */
+.twitch-filter-message {
+    position: relative;
+    overflow-wrap: anywhere;
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
-    #twitch-dual-chat-container {
-        gap: 4px;
-    }
+/* Корень копии сообщения: в VOD это <li> вне списка — без маркера */
+.twitch-filter-clone {
+    list-style: none;
+}
 
-    .twitch-filter-message {
-        padding: 4px 8px;
-        font-size: 12px;
-    }
+.twitch-filter-message:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+}
 
-    .twitch-filter-header,
-    .twitch-original-header {
-        padding: 6px 8px;
-        font-size: 11px;
-    }
+/* Своё время (live чат) — в отступе слева от сообщения Twitch */
+.twitch-filter-timestamp {
+    position: absolute;
+    left: 8px;
+    top: 5px;
+    color: var(--tcf-text-muted);
+    font-family: monospace;
+    font-size: 11px;
+    line-height: 20px;
+    pointer-events: none;
+}
 
-    .twitch-filter-timestamp {
-        font-size: 10px;
-    }
+.twitch-filter-timestamp + .twitch-filter-clone {
+    padding-left: 60px !important;
+}
 
-    #twitch-filter-chat {
-        min-height: 40px;
-    }
+/* --- Подсказка и меню сообщения ---------------------------------------------- */
+
+.twitch-filter-hovercard,
+.twitch-filter-menu {
+    position: fixed;
+    background: var(--tcf-surface);
+    color: var(--tcf-text);
+    border-radius: var(--tcf-radius);
+    box-shadow: var(--tcf-shadow);
+    font-family: var(--tcf-font);
+}
+
+/* Подсказка при наведении на значки и смайлы */
+.twitch-filter-hovercard {
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-width: 220px;
+    padding: 8px;
+    font-size: 12px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.twitch-filter-hovercard img {
+    max-width: 112px;
+    max-height: 112px;
+}
+
+/* Копия меню сообщения («⋮» справа при наведении) */
+.twitch-filter-menu {
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    min-width: 160px;
+    padding: 4px;
+}
+
+.twitch-filter-menu button {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.twitch-filter-menu button:hover,
+.twitch-filter-menu button:focus-visible {
+    background: var(--tcf-surface-hover);
+    outline: none;
+}
+
+/* --- Скроллбары ----------------------------------------------------------------- */
+
+.twitch-filter-messages,
+.twitch-original-content {
+    scrollbar-width: thin;
+    scrollbar-color: #464649 transparent;
+}
+
+/* --- Оригинальный чат Twitch внутри нашего контейнера -------------------------- */
+
+.twitch-original-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* Поле ввода сообщения всегда видимо: при нехватке места сжимается
    только список сообщений, а не поле ввода */
 .twitch-original-content section.chat-room,
 .twitch-original-content .chat-room__content {
+    position: static !important;
     height: 100% !important;
     min-height: 0 !important;
-    max-width: 100%;
-}
-
-/* Кнопки поля ввода не должны выходить за границы по ширине */
-.twitch-original-content .chat-input {
-    box-sizing: border-box;
     max-width: 100%;
 }
 
@@ -338,40 +384,67 @@
     min-height: 0 !important;
 }
 
+/* Кнопки поля ввода не должны выходить за границы */
 .twitch-original-content .chat-input {
     flex-shrink: 0 !important;
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
-/* Стилизация оригинального чата внутри нашего контейнера */
 .twitch-original-content .video-chat__message-list-wrapper,
 .twitch-original-content [data-a-target="chat-scroller"] {
     height: 100% !important;
     max-height: none !important;
 }
 
-.twitch-original-content .video-chat__message-list-wrapper>div,
-.twitch-original-content [data-a-target="chat-scroller"]>div {
+.twitch-original-content .video-chat__message-list-wrapper > div,
+.twitch-original-content [data-a-target="chat-scroller"] > div {
     height: 100% !important;
 }
 
-/* Убираем границы у вложенного оригинального чата */
 .twitch-original-content .video-chat__message-list-wrapper {
     border: none !important;
     border-radius: 0 !important;
 }
 
-/* Компактный режим для мобильных устройств */
-@media (max-width: 480px) {
-    #twitch-dual-chat-container {
-        flex-direction: column;
+/* Верхние панели Twitch (закреплённые сообщения, cheering, hype train)
+   остаются в DOM у Twitch (физический перенос ломает React), но визуально
+   выводятся поверх верха колонки чата — над фильтрованным чатом */
+.twitch-original-content .chat-room__content > div:has([class*="community-highlight"]),
+.twitch-original-content .chat-room__content > div:has([class*="bitsLeaderboard"]),
+.twitch-original-content .chat-room__content > div:has([class*="hype-train"]) {
+    position: absolute !important;
+    /* Ниже заголовка фильтрованного чата, чтобы не закрывать его кнопки */
+    top: 34px;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    max-height: 35%;
+    overflow-y: auto;
+}
+
+/* --- Отдельное окно фильтрованного чата ------------------------------------------ */
+
+.twitch-filter-popout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+    background: var(--tcf-bg);
+    color: var(--tcf-text);
+    font: 13px/20px var(--tcf-font);
+}
+
+/* --- Узкая колонка чата ------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+    .twitch-filter-header,
+    .twitch-original-header {
+        padding-left: 8px;
+        font-size: 11px;
     }
 
-    #twitch-filter-chat {
-        min-height: 40px;
-    }
-
-    .twitch-filter-header span:first-child,
-    .twitch-original-header span:first-child {
+    .twitch-filter-timestamp {
         font-size: 10px;
     }
 }
