@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Локализация
     const translations = {
         en: {
-            title: 'Twitch Chat Filter',
+            title: 'Chat Filter for Twitch',
             filterOn: 'Filter is on',
             filterOff: 'Filter is off',
             mode: 'Mode',
@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clearAllConfirm: 'Delete all users and saved messages?'
         },
         ru: {
-            title: 'Фильтр чата Twitch',
+            title: 'Фильтр чата для Twitch',
             filterOn: 'Фильтр включён',
             filterOff: 'Фильтр выключен',
             mode: 'Режим',

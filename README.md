@@ -1,4 +1,4 @@
-# Twitch Chat Filter Extension
+# Chat Filter for Twitch
 
 A Chrome extension that provides advanced chat filtering for Twitch streams with dual chat view functionality.
 
