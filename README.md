@@ -4,13 +4,20 @@ A Chrome extension that adds a second, filtered chat to Twitch. It shows only th
 
 **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/chat-filter-for-twitch/mdkiolpdbimnpdjglhjlbhmfedjdbebm)** · [Русский](#русский)
 
-<p align="center">
-  <img src="screenshots/dual-chat-view.png" width="260" alt="Filtered chat above the original Twitch chat">
-  &nbsp;
-  <img src="screenshots/extension-popup.png" width="260" alt="Extension menu with filter rules">
-  &nbsp;
-  <img src="screenshots/rule-editor.png" width="260" alt="Creating a rule">
-</p>
+<table align="center">
+  <tr>
+    <td align="center" valign="top">
+      <img src="screenshots/dual-chat-view.png" width="300" alt="Filtered chat above the original Twitch chat"><br>
+      <sub>Filtered chat above the original one</sub>
+    </td>
+    <td align="center" valign="top">
+      <img src="screenshots/extension-popup.png" width="300" alt="Extension menu with filter rules"><br>
+      <sub>Rules of the active preset</sub><br><br>
+      <img src="screenshots/rule-editor.png" width="300" alt="Creating a rule"><br>
+      <sub>Creating a rule</sub>
+    </td>
+  </tr>
+</table>
 
 ## Features
 
