@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2025-2026 Risher. Licensed under GPL-3.0-only, see LICENSE
+
 // Shared by the popup and the content script: roles, rules, presets and their
 // storage in chrome.storage.sync
 

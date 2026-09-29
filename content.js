@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Copyright (C) 2025-2026 Risher. Licensed under GPL-3.0-only, see LICENSE
+
 // Key of the settings backup in the twitch.tv localStorage
 const BACKUP_KEY = 'twitchChatFilterBackup';
 
