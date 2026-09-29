@@ -9,14 +9,19 @@
             --bg: #0e0e10;
             --surface: #18181b;
             --surface-2: #1f1f23;
+            --surface-hover: #26262c;
             --border: #2f2f35;
+            --border-strong: #464649;
             --text: #efeff1;
             --text-muted: #adadb8;
+            --text-faint: #7a7a85;
             --accent: #9146ff;
             --accent-hover: #772ce8;
-            --whitelist: #00ad03;
-            --blacklist: #eb0400;
-            --radius: 6px;
+            --accent-soft: rgba(145, 70, 255, 0.18);
+            --include: #00c853;
+            --exclude: #ff4f4d;
+            --warning: #ffb31a;
+            --radius: 8px;
         }
 
         * {
@@ -24,9 +29,12 @@
         }
 
         body {
-            width: 320px;
+            display: flex;
+            flex-direction: column;
+            width: 380px;
+            height: 560px;
             margin: 0;
-            padding: 14px;
+            overflow: hidden;
             background-color: var(--bg);
             color: var(--text);
             font: 13px/1.4 Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -43,78 +51,146 @@
             cursor: pointer;
         }
 
+        button:disabled {
+            cursor: default;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
         :focus-visible {
             outline: 2px solid var(--accent);
             outline-offset: 1px;
         }
 
-        .section {
-            margin-top: 14px;
+        svg {
+            flex-shrink: 0;
         }
 
-        .section-title {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            color: var(--text-muted);
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-        }
-
-        /* Шапка */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-        }
-
-        .title {
+        input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
             margin: 0;
-            color: var(--accent);
-            font-size: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
         }
 
-        .language-select {
-            padding: 3px 6px;
-            background-color: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-size: 11px;
+        /* --- Scrollbars ---------------------------------------------------- */
+
+        ::-webkit-scrollbar {
+            width: 10px;
         }
 
-        /* Переключатель фильтра */
-        .switch-row {
-            display: flex;
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* A transparent border gives a thin thumb inset from the edge */
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--border-strong);
+            background-clip: padding-box;
+            border: 3px solid transparent;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #6b6b75;
+        }
+
+        @supports not selector(::-webkit-scrollbar) {
+            * {
+                scrollbar-width: thin;
+                scrollbar-color: var(--border-strong) transparent;
+            }
+        }
+
+        /* --- Common elements ----------------------------------------------- */
+
+        .icon-btn {
+            display: inline-flex;
             align-items: center;
-            justify-content: space-between;
-            margin-top: 12px;
-            padding: 8px 10px;
-            background-color: var(--surface);
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            color: var(--text-muted);
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            background-color: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .icon-btn:disabled {
+            color: var(--border-strong);
+        }
+
+        .icon-btn.danger:hover:not(:disabled) {
+            color: var(--exclude);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 32px;
+            padding: 0 14px;
+            border: none;
             border-radius: var(--radius);
+            background-color: var(--surface-hover);
+            font-weight: 600;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: #323239;
+        }
+
+        .btn.primary {
+            background-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn.primary:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+        }
+
+        .btn.ghost {
+            padding: 0 10px;
+            background: none;
+        }
+
+        .btn.ghost:hover:not(:disabled) {
+            background-color: var(--surface-hover);
         }
 
         .switch {
             position: relative;
+            flex-shrink: 0;
             width: 36px;
             height: 20px;
             padding: 0;
             border: none;
             border-radius: 10px;
-            background-color: #464649;
+            background-color: var(--border-strong);
             transition: background-color 0.15s;
         }
 
         .switch::after {
             content: "";
             position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 16px;
-            height: 16px;
+            top: 3px;
+            left: 3px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
             background-color: #fff;
             transition: transform 0.15s;
@@ -128,286 +204,1314 @@
             transform: translateX(16px);
         }
 
-        /* Режим: whitelist / blacklist */
-        .segmented {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px;
-            padding: 3px;
-            background-color: var(--surface);
-            border-radius: var(--radius);
+        .switch.large {
+            width: 40px;
+            height: 22px;
+            border-radius: 11px;
         }
 
-        .segmented button {
-            padding: 6px 4px;
-            border: none;
-            border-radius: 4px;
-            background: none;
-            color: var(--text-muted);
-            font-weight: 600;
+        .switch.large::after {
+            width: 16px;
+            height: 16px;
         }
 
-        .segmented button[aria-checked="true"][data-mode="whitelist"] {
-            background-color: var(--whitelist);
-            color: #fff;
+        .switch.large[aria-checked="true"]::after {
+            transform: translateX(18px);
         }
 
-        .segmented button[aria-checked="true"][data-mode="blacklist"] {
-            background-color: var(--blacklist);
-            color: #fff;
-        }
-
-        .mode-hint {
-            margin: 6px 2px 0;
-            color: var(--text-muted);
-            font-size: 11px;
-        }
-
-        /* Добавление ника */
-        .add-row {
-            display: flex;
-            gap: 6px;
-        }
-
-        .add-row input {
-            flex: 1;
-            min-width: 0;
-            padding: 7px 9px;
-            background-color: var(--surface);
+        .input {
+            width: 100%;
+            height: 34px;
+            padding: 0 10px;
+            background-color: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
         }
 
-        .add-row input:focus {
+        .input::placeholder {
+            color: var(--text-faint);
+        }
+
+        .input:focus {
             border-color: var(--accent);
             outline: none;
         }
 
-        .btn {
-            padding: 7px 12px;
-            border: none;
-            border-radius: var(--radius);
-            background-color: var(--accent);
-            color: #fff;
-            font-weight: 600;
+        .input[aria-invalid="true"] {
+            border-color: var(--exclude);
         }
 
-        .btn:hover {
-            background-color: var(--accent-hover);
-        }
+        /* --- Header -------------------------------------------------------- */
 
-        .btn-link {
-            padding: 0;
-            border: none;
-            background: none;
-            color: var(--accent);
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: none;
-            letter-spacing: 0;
-        }
-
-        .btn-link:hover {
-            text-decoration: underline;
-        }
-
-        .btn-link:disabled {
-            color: var(--text-muted);
-            cursor: default;
-            text-decoration: none;
-        }
-
-        .btn-danger {
-            width: 100%;
-            margin-top: 14px;
-            background: none;
-            border: 1px solid var(--blacklist);
-            color: var(--blacklist);
-        }
-
-        .btn-danger:hover {
-            background-color: var(--blacklist);
-            color: #fff;
-        }
-
-        /* Список ников */
-        .user-list {
+        /* The main page and settings headers have the same height, so nothing shifts
+           when switching between them */
+        .header,
+        .view-header {
             display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            max-height: 160px;
-            overflow-y: auto;
-            scrollbar-width: thin;
-        }
-
-        .user-item {
-            display: inline-flex;
             align-items: center;
-            gap: 2px;
-            max-width: 100%;
-            padding: 2px 2px 2px 8px;
-            background-color: var(--surface-2);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            gap: 4px;
+            flex-shrink: 0;
+            height: 54px;
+            padding: 0 12px 0 6px;
         }
 
-        .user-name {
+        .preset-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+            min-width: 0;
+            padding: 4px 6px;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            font-size: 16px;
+            font-weight: 700;
+            text-align: left;
+        }
+
+        .preset-btn:hover {
+            background-color: var(--surface-hover);
+        }
+
+        .preset-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            line-height: 1.2;
+        }
+
+        .preset-name {
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
         }
 
-        .remove-btn {
-            display: inline-flex;
+        /* Where the preset applies: channel, default, not used */
+        .preset-status {
+            display: flex;
             align-items: center;
-            justify-content: center;
-            width: 18px;
-            height: 18px;
-            padding: 0;
-            border: none;
-            border-radius: 50%;
-            background: none;
-            color: var(--text-muted);
-            font-size: 14px;
-            line-height: 1;
-        }
-
-        .remove-btn:hover {
-            background-color: var(--blacklist);
-            color: #fff;
-        }
-
-        .empty {
-            width: 100%;
-            padding: 10px;
-            color: var(--text-muted);
-            font-size: 12px;
-            text-align: center;
-            background-color: var(--surface);
-            border-radius: var(--radius);
-        }
-
-        /* Статистика */
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-        }
-
-        .stat {
-            padding: 8px 10px;
-            background-color: var(--surface);
-            border-radius: var(--radius);
-        }
-
-        .stat-value {
-            display: block;
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        .stat-label {
+            gap: 4px;
+            overflow: hidden;
             color: var(--text-muted);
             font-size: 11px;
+            font-weight: 500;
+            white-space: nowrap;
         }
 
-        /* Сохранённые сообщения */
-        details summary {
-            cursor: pointer;
+        .preset-status:empty {
+            display: none;
+        }
+
+        .preset-status[data-state="bound"] {
+            color: #bf94ff;
+        }
+
+        .preset-status[data-state="unused"] {
+            color: var(--warning);
+        }
+
+        .preset-btn svg {
+            color: var(--text-muted);
+        }
+
+        /* --- Search and sorting -------------------------------------------- */
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 12px 6px;
+        }
+
+        .search {
+            position: relative;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search .input {
+            height: 32px;
+            padding: 0 28px 0 30px;
+            background-color: var(--surface);
+            border-color: transparent;
+        }
+
+        .search .input:focus {
+            border-color: var(--accent);
+        }
+
+        .search-icon {
+            position: absolute;
+            top: 50%;
+            left: 9px;
+            color: var(--text-muted);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .search .icon-btn {
+            position: absolute;
+            top: 50%;
+            right: 3px;
+            width: 24px;
+            height: 24px;
+            transform: translateY(-50%);
+        }
+
+        .sort {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .sort select {
+            height: 32px;
+            padding: 0 24px 0 8px;
+            appearance: none;
+            border: none;
+            border-radius: var(--radius);
+            background-color: transparent;
             color: var(--text-muted);
             font-size: 12px;
             font-weight: 600;
+            cursor: pointer;
         }
 
-        .saved-messages {
-            max-height: 200px;
-            margin-top: 6px;
-            overflow-y: auto;
-            scrollbar-width: thin;
+        .sort select:hover {
+            background-color: var(--surface-hover);
+            color: var(--text);
         }
 
-        .message-item {
-            margin-bottom: 4px;
-            padding: 6px 8px;
-            background-color: var(--surface);
-            border-radius: var(--radius);
-            font-size: 12px;
-            overflow-wrap: anywhere;
+        .sort select option {
+            background-color: var(--surface-2);
+            color: var(--text);
         }
 
-        .message-meta {
+        .sort svg {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            color: var(--text-muted);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* --- Tabs ---------------------------------------------------------- */
+
+        .tabs {
             display: flex;
-            justify-content: space-between;
-            gap: 6px;
+            padding: 0 6px;
+            border-bottom: 1px solid var(--border);
         }
 
-        .message-author {
-            color: var(--accent);
+        .tab {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 2px;
+            border: none;
+            background: none;
+            box-shadow: inset 0 -2px transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        .tab[aria-selected="true"] {
+            box-shadow: inset 0 -2px var(--accent);
+            color: var(--text);
+        }
+
+        /* --- Warning above the list ---------------------------------------- */
+
+        .banner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 12px 0;
+            padding: 6px 10px;
+            border-radius: var(--radius);
+            background-color: var(--surface);
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .banner[data-type="warning"] {
+            background-color: rgba(255, 179, 26, 0.1);
+            color: var(--warning);
+        }
+
+        /* --- Rule list ----------------------------------------------------- */
+
+        .list {
+            flex: 1;
+            min-height: 0;
+            padding: 6px 2px 6px 8px;
+            overflow-y: auto;
+            scrollbar-gutter: stable;
+        }
+
+        .rule {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 4px 4px 4px 6px;
+            border-radius: var(--radius);
+        }
+
+        .rule:hover,
+        .rule.menu-open {
+            background-color: var(--surface);
+        }
+
+        .rule.is-new {
+            background-color: var(--accent-soft);
+            transition: background-color 1.5s;
+        }
+
+        .rule.is-selected {
+            background-color: var(--accent-soft);
+        }
+
+        /* Rule type color: the label in the list and the editor buttons */
+        [data-type="role"] {
+            --type-color: #34d399;
+        }
+
+        [data-type="user"] {
+            --type-color: #60a5fa;
+        }
+
+        [data-type="badge"] {
+            --type-color: #fbbf24;
+        }
+
+        [data-type="keyword"] {
+            --type-color: #c084fc;
+        }
+
+        .type-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex-shrink: 0;
+            width: 74px;
+            padding: 2px 4px;
+            border: 1px solid color-mix(in srgb, var(--type-color) 45%, transparent);
+            border-radius: 10px;
+            background-color: color-mix(in srgb, var(--type-color) 14%, transparent);
+            color: var(--type-color);
+            font-size: 10.5px;
+            font-weight: 700;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .type-chip span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Show (+) / hide (−); a click switches the action */
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            border: 1.5px solid var(--action-color);
+            border-radius: 4px;
+            background: none;
+            color: var(--action-color);
+        }
+
+        .action-btn:hover {
+            background-color: var(--action-color);
+            color: #0e0e10;
+        }
+
+        [data-action="include"] {
+            --action-color: var(--include);
+        }
+
+        [data-action="exclude"] {
+            --action-color: var(--exclude);
+        }
+
+        .rule-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rule-value {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-weight: 700;
         }
 
-        .message-time {
-            color: var(--text-muted);
-            font-size: 10px;
+        .rule-value-text {
+            overflow: hidden;
             white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* A keyword is shown in quotes */
+        .rule[data-type="keyword"] .rule-value-text::before,
+        .rule[data-type="keyword"] .rule-value-text::after {
+            content: "\"";
+            color: var(--text-faint);
+        }
+
+        .rule-value mark {
+            background: none;
+            color: var(--accent);
+        }
+
+        .role-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            background-color: var(--role-color);
+            color: #fff;
+        }
+
+        .rule-note {
+            overflow: hidden;
+            color: var(--text-muted);
+            font-size: 11.5px;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .rule.is-off .type-chip,
+        .rule.is-off .action-btn,
+        .rule.is-off .rule-main {
+            opacity: 0.45;
+        }
+
+        .empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 36px 20px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Quick add from the search field */
+        .quick-add {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            min-height: 40px;
+            margin-bottom: 4px;
+            padding: 6px 10px;
+            border: 1px dashed var(--border-strong);
+            border-radius: var(--radius);
+            background: none;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        .quick-add:hover,
+        .quick-add:focus-visible {
+            border-color: var(--accent);
+            color: var(--text);
+        }
+
+        .quick-add strong {
+            overflow: hidden;
+            color: var(--text);
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .quick-add kbd {
+            margin-left: auto;
+            padding: 0 5px;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            color: var(--text-faint);
+            font: 10px/16px inherit;
+        }
+
+        /* --- Footer -------------------------------------------------------- */
+
+        .footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 52px;
+            padding: 10px 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-count {
+            flex: 1;
+            min-width: 0;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .footer label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            color: var(--text-muted);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* --- Dropdown menus ------------------------------------------------ */
+
+        .menu {
+            position: fixed;
+            z-index: 20;
+            min-width: 180px;
+            padding: 4px;
+            background-color: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 7px 10px;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .menu-item:hover:not(:disabled),
+        .menu-item:focus-visible {
+            background-color: var(--surface-hover);
+            outline: none;
+        }
+
+        .menu-item:disabled {
+            opacity: 0.4;
+        }
+
+        .menu-item svg {
+            color: var(--text-muted);
+        }
+
+        .menu-item.danger,
+        .menu-item.danger svg {
+            color: var(--exclude);
+        }
+
+        .menu-sep {
+            height: 1px;
+            margin: 4px 6px;
+            background-color: var(--border);
+        }
+
+        .menu-label {
+            padding: 6px 10px 4px;
+            color: var(--text-faint);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .presets-menu {
+            top: 50px;
+            left: 8px;
+            width: 280px;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+        }
+
+        .preset-items {
+            max-height: 170px;
+            overflow-y: auto;
+        }
+
+        textarea.input {
+            height: 110px;
+            padding: 8px 10px;
+            resize: none;
+            font: 12px/1.4 ui-monospace, Consolas, monospace;
+        }
+
+        .preset-item-text {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+            line-height: 1.25;
+        }
+
+        .preset-item-name,
+        .preset-item-meta {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .preset-item-meta {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-faint);
+            font-size: 11px;
+        }
+
+        .preset-item-meta svg {
+            color: inherit;
+        }
+
+        .preset-item .preset-item-count {
+            color: var(--text-faint);
+            font-size: 12px;
+        }
+
+        .preset-item .check {
+            visibility: hidden;
+            color: var(--accent);
+        }
+
+        .preset-item[aria-checked="true"] .check {
+            visibility: visible;
+        }
+
+        /* --- Popup pages: rules and settings ------------------------------- */
+
+        .view {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
+
+        /* Opacity only: a transform during the transition made the popup jump */
+        .view {
+            animation: fade 0.12s ease-out;
+        }
+
+        .view-header {
+            gap: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .view-title {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .settings-body {
+            flex: 1;
+            min-height: 0;
+            padding: 14px 12px;
+            overflow-y: auto;
+        }
+
+        .settings-group + .settings-group {
+            margin-top: 18px;
+        }
+
+        .settings-group-title {
+            margin: 0 0 6px 2px;
+            color: var(--text-faint);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .settings-card {
+            background-color: var(--surface);
+            border-radius: var(--radius);
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 52px;
+            padding: 10px 12px;
+        }
+
+        .setting-row + .setting-row {
+            border-top: 1px solid var(--border);
+        }
+
+        .setting-text {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .setting-label {
+            font-weight: 600;
+        }
+
+        .setting-hint {
+            color: var(--text-muted);
+            font-size: 11.5px;
+        }
+
+        .setting-value {
+            color: var(--text-muted);
+        }
+
+        /* Dropdown button (language, message time) */
+        .dropdown-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            height: 32px;
+            padding: 0 8px 0 12px;
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius);
+            background-color: var(--bg);
+            font-weight: 600;
+        }
+
+        .dropdown-btn:hover,
+        .dropdown-btn[aria-expanded="true"] {
+            border-color: var(--accent);
+        }
+
+        .dropdown-btn svg {
+            color: var(--text-muted);
+        }
+
+        .choice-menu .menu-item .check {
+            visibility: hidden;
+            color: var(--accent);
+        }
+
+        .choice-menu .menu-item[aria-checked="true"] .check {
+            visibility: visible;
+        }
+
+        .language-code {
+            margin-left: auto;
+            padding-left: 12px;
+            color: var(--text-faint);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* --- Editor sheet -------------------------------------------------- */
+
+        .sheet {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            display: flex;
+            align-items: flex-end;
+            background-color: rgba(0, 0, 0, 0.6);
+            animation: fade 0.15s;
+        }
+
+        .sheet-panel {
+            width: 100%;
+            max-height: 100%;
+            padding: 16px 14px 14px;
+            overflow-y: auto;
+            background-color: var(--surface);
+            border-radius: 14px 14px 0 0;
+            animation: slide-up 0.18s ease-out;
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+            }
+        }
+
+        @keyframes slide-up {
+            from {
+                transform: translateY(24px);
+            }
+        }
+
+        .sheet-title {
+            margin: 0 0 12px;
+            font-size: 15px;
+        }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .field-hint {
+            margin: 4px 2px 0;
+            color: var(--text-faint);
+            font-size: 11.5px;
+        }
+
+        .field-error {
+            margin: 4px 2px 0;
+            color: var(--exclude);
+            font-size: 11.5px;
+        }
+
+        .field-error:empty {
+            display: none;
+        }
+
+        .segmented {
+            display: grid;
+            grid-auto-columns: minmax(0, 1fr);
+            grid-auto-flow: column;
+            gap: 3px;
+            padding: 3px;
+            background-color: var(--bg);
+            border-radius: var(--radius);
+        }
+
+        .segmented button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 4px;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .segmented button:hover {
+            color: var(--text);
+        }
+
+        .segmented button[aria-checked="true"] {
+            background-color: var(--surface-hover);
+            color: var(--text);
+        }
+
+        .segmented button[aria-checked="true"][data-type] {
+            background-color: color-mix(in srgb, var(--type-color) 20%, var(--surface));
+            color: var(--type-color);
+        }
+
+        .segmented button[aria-checked="true"][data-action] {
+            background-color: color-mix(in srgb, var(--action-color) 22%, var(--surface));
+        }
+
+        .segmented .action-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid var(--action-color);
+            border-radius: 3px;
+            color: var(--action-color);
+        }
+
+        .roles {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .role {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            padding: 5px 8px 5px 5px;
+            background-color: var(--bg);
+            border: 1px solid transparent;
+            border-radius: var(--radius);
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-align: left;
+        }
+
+        .role:hover:not(:disabled) {
+            color: var(--text);
+        }
+
+        .role:disabled {
+            opacity: 0.4;
+        }
+
+        .role .role-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background-color: var(--surface-2);
+            color: var(--role-color);
+        }
+
+        .role-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .role[aria-pressed="true"] {
+            background-color: color-mix(in srgb, var(--role-color) 14%, var(--bg));
+            border-color: color-mix(in srgb, var(--role-color) 70%, transparent);
+            color: var(--text);
+        }
+
+        .role[aria-pressed="true"] .role-icon {
+            background-color: var(--role-color);
+            color: #fff;
+        }
+
+        .sheet-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        /* --- Toast with undo ----------------------------------------------- */
+
+        .toast {
+            position: fixed;
+            right: 10px;
+            bottom: 62px;
+            left: 10px;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background-color: #efeff1;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            color: #0e0e10;
+            font-size: 12px;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.15s, transform 0.15s;
+            pointer-events: none;
+        }
+
+        .toast.visible {
+            opacity: 1;
+            transform: none;
+            pointer-events: auto;
+        }
+
+        .toast-text {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .toast-undo {
+            padding: 0;
+            border: none;
+            background: none;
+            color: var(--accent-hover);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .toast-undo:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 
 <body>
-    <div class="header">
-        <h1 class="title" data-i18n="title">Chat Filter for Twitch</h1>
-        <select id="languageSelect" class="language-select" aria-label="Language">
-            <option value="en">English</option>
-            <option value="ru">Русский</option>
-        </select>
+    <div class="view" id="mainView">
+        <header class="header">
+            <button type="button" id="presetBtn" class="preset-btn" aria-haspopup="menu" aria-expanded="false"
+                aria-controls="presetMenu">
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="m10 2 8 4-8 4-8-4 8-4Zm-6.2 7.1L10 12.2l6.2-3.1L18 10l-8 4-8-4 1.8-.9Zm0 4L10 16.2l6.2-3.1L18 14l-8 4-8-4 1.8-.9Z" />
+                </svg>
+                <span class="preset-text">
+                    <span class="preset-name" id="presetName"></span>
+                    <span class="preset-status" id="presetStatus"></span>
+                </span>
+                <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor" d="m5 7 5 5 5-5H5Z" />
+                </svg>
+            </button>
+            <button type="button" id="settingsBtn" class="icon-btn">
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                    <path fill="currentColor" fill-rule="evenodd"
+                        d="M8.6 1.5h2.8l.5 2.4c.5.2 1 .5 1.4.8l2.3-.8 1.4 2.4-1.8 1.6a6 6 0 0 1 0 1.7l1.8 1.6-1.4 2.4-2.3-.8c-.4.3-.9.6-1.4.8l-.5 2.4H8.6l-.5-2.4c-.5-.2-1-.5-1.4-.8l-2.3.8-1.4-2.4 1.8-1.6a6 6 0 0 1 0-1.7L3 6.3l1.4-2.4 2.3.8c.4-.3.9-.6 1.4-.8l.5-2.4ZM10 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+                </svg>
+            </button>
+            <button type="button" id="toggleFilterBtn" class="switch large" role="switch" aria-checked="true"></button>
+        </header>
+
+        <div class="toolbar">
+            <div class="search">
+                <svg class="search-icon" viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M8.5 2a6.5 6.5 0 0 1 5.2 10.4l4 4-1.4 1.4-4-4A6.5 6.5 0 1 1 8.5 2Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z" />
+                </svg>
+                <input type="text" id="searchInput" class="input" autocomplete="off" spellcheck="false"
+                    aria-controls="ruleList" />
+                <button type="button" id="clearSearchBtn" class="icon-btn" hidden>
+                    <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true">
+                        <path fill="currentColor"
+                            d="m10 8.6 4.3-4.3 1.4 1.4-4.3 4.3 4.3 4.3-1.4 1.4-4.3-4.3-4.3 4.3-1.4-1.4 4.3-4.3-4.3-4.3 1.4-1.4L10 8.6Z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="sort">
+                <select id="sortSelect"></select>
+                <svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true">
+                    <path fill="currentColor" d="m5 7 5 5 5-5H5Z" />
+                </svg>
+            </div>
+        </div>
+
+        <nav class="tabs" role="tablist" id="tabs">
+            <button type="button" class="tab" role="tab" data-tab="all"></button>
+            <button type="button" class="tab" role="tab" data-tab="role"></button>
+            <button type="button" class="tab" role="tab" data-tab="user"></button>
+            <button type="button" class="tab" role="tab" data-tab="badge"></button>
+            <button type="button" class="tab" role="tab" data-tab="keyword"></button>
+        </nav>
+
+        <div class="banner" id="banner" role="status" hidden></div>
+
+        <div class="list" id="ruleList" role="list"></div>
+
+        <footer class="footer" id="footer">
+            <button type="button" id="editBtn" class="btn ghost" data-i18n="edit"></button>
+            <span class="footer-count" id="ruleCount"></span>
+            <button type="button" id="createBtn" class="btn primary">
+                <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor" d="M9 4h2v5h5v2h-5v5H9v-5H4V9h5V4Z" />
+                </svg>
+                <span data-i18n="create"></span>
+            </button>
+        </footer>
+
+        <footer class="footer" id="bulkFooter" hidden>
+            <label>
+                <input type="checkbox" id="selectAll" />
+                <span id="selectedCount"></span>
+            </label>
+            <button type="button" id="bulkEnableBtn" class="icon-btn">
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M7 5h6a5 5 0 0 1 0 10H7A5 5 0 0 1 7 5Zm6 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
+                </svg>
+            </button>
+            <button type="button" id="bulkDisableBtn" class="icon-btn">
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M7 5h6a5 5 0 0 1 0 10H7A5 5 0 0 1 7 5Zm0 2a3 3 0 1 0 0 6h6a3 3 0 1 0 0-6H7Zm0 .5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z" />
+                </svg>
+            </button>
+            <button type="button" id="bulkDeleteBtn" class="icon-btn danger">
+                <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M8 2h4a1 1 0 0 1 1 1v1h4v2h-1v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6H3V4h4V3a1 1 0 0 1 1-1Zm-2 4v10h8V6H6Zm2 2h1.5v6H8V8Zm2.5 0H12v6h-1.5V8Z" />
+                </svg>
+            </button>
+            <button type="button" id="doneBtn" class="btn" data-i18n="done"></button>
+        </footer>
     </div>
 
-    <div class="switch-row">
-        <span id="filterStateLabel"></span>
-        <button id="toggleFilterBtn" class="switch" role="switch" aria-checked="true"
-            aria-labelledby="filterStateLabel"></button>
+    <!-- Settings page -->
+    <div class="view settings-view" id="settingsView" hidden>
+        <header class="view-header">
+            <button type="button" id="backBtn" class="icon-btn">
+                <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+                    <path fill="currentColor" d="M8.4 4 2.4 10l6 6 1.4-1.4L6.2 11H17V9H6.2l3.6-3.6L8.4 4Z" />
+                </svg>
+            </button>
+            <h1 class="view-title" data-i18n="settings"></h1>
+        </header>
+
+        <div class="settings-body">
+            <section class="settings-group" aria-labelledby="generalTitle">
+                <h2 class="settings-group-title" id="generalTitle" data-i18n="general"></h2>
+                <div class="settings-card">
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="languageLabel" data-i18n="languageLabel"></span>
+                            <span class="setting-hint" data-i18n="languageHint"></span>
+                        </div>
+                        <button type="button" id="languageBtn" class="dropdown-btn" aria-haspopup="menu"
+                            aria-expanded="false" aria-controls="choiceMenu"
+                            aria-labelledby="languageLabel languageName">
+                            <span id="languageName"></span>
+                            <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                                <path fill="currentColor" d="m5 7 5 5 5-5H5Z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="timestampLabel" data-i18n="timestampLabel"></span>
+                            <span class="setting-hint" data-i18n="timestampHint"></span>
+                        </div>
+                        <button type="button" id="timestampBtn" class="dropdown-btn" aria-haspopup="menu"
+                            aria-expanded="false" aria-controls="choiceMenu"
+                            aria-labelledby="timestampLabel timestampName">
+                            <span id="timestampName"></span>
+                            <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                                <path fill="currentColor" d="m5 7 5 5 5-5H5Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-group" aria-labelledby="aboutTitle">
+                <h2 class="settings-group-title" id="aboutTitle" data-i18n="about"></h2>
+                <div class="settings-card">
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" data-i18n="extensionName"></span>
+                            <span class="setting-hint" data-i18n="aboutText"></span>
+                        </div>
+                        <span class="setting-value" id="versionValue"></span>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 
-    <div class="section">
-        <div class="section-title" data-i18n="mode">Mode</div>
-        <div class="segmented" role="radiogroup">
-            <button type="button" role="radio" data-mode="whitelist" data-i18n="whitelist">Whitelist</button>
-            <button type="button" role="radio" data-mode="blacklist" data-i18n="blacklist">Blacklist</button>
-        </div>
-        <p class="mode-hint" id="modeHint"></p>
+    <!-- Dropdown choice on the settings page (language, message time) -->
+    <div class="menu choice-menu" id="choiceMenu" role="menu" hidden></div>
+
+    <!-- Presets -->
+    <div class="menu presets-menu" id="presetMenu" role="menu" hidden>
+        <div class="menu-label" data-i18n="presets"></div>
+        <div class="preset-items" id="presetItems"></div>
+        <div class="menu-sep"></div>
+        <button type="button" class="menu-item" role="menuitem" id="bindPresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M8.5 11.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1 1.4 1.4 1-1a1.5 1.5 0 0 1 2.2 2.2l-3 3a1.5 1.5 0 0 1-2.2 0l-1.4 1.4Zm3-3a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1-1.4-1.4-1 1a1.5 1.5 0 0 1-2.2-2.2l3-3a1.5 1.5 0 0 1 2.2 0l1.4-1.4Z" />
+            </svg>
+            <span id="bindPresetLabel"></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" id="defaultPresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.6L10 14.7l-5.1 2.7 1-5.6-4.1-4 5.7-.8L10 1.8Z" />
+            </svg>
+            <span data-i18n="makeDefault"></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" id="presetSettingsBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor"
+                    d="m13.6 2.6 3.8 3.8L7.8 16H4v-3.8l9.6-9.6Zm0 2.8L6 13v1h1l7.6-7.6-1-1Z" />
+            </svg>
+            <span data-i18n="presetSettings"></span>
+        </button>
+        <div class="menu-sep"></div>
+        <button type="button" class="menu-item" role="menuitem" id="newPresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M9 4h2v5h5v2h-5v5H9v-5H4V9h5V4Z" />
+            </svg>
+            <span data-i18n="newPreset"></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" id="duplicatePresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor"
+                    d="M7 2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-1v-2h1V4H7v1H5V4a2 2 0 0 1 2-2ZM4 7h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Zm0 2v7h9V9H4Z" />
+            </svg>
+            <span data-i18n="duplicatePreset"></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" id="exportPresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M9 13V5.8L6.4 8.4 5 7l5-5 5 5-1.4 1.4L11 5.8V13H9Zm-6 1h2v2h10v-2h2v4H3v-4Z" />
+            </svg>
+            <span data-i18n="exportPreset"></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" id="importPresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M11 2v7.2l2.6-2.6L15 8l-5 5-5-5 1.4-1.4L9 9.2V2h2Zm-8 12h2v2h10v-2h2v4H3v-4Z" />
+            </svg>
+            <span data-i18n="importPreset"></span>
+        </button>
+        <button type="button" class="menu-item danger" role="menuitem" id="deletePresetBtn">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor"
+                    d="M8 2h4a1 1 0 0 1 1 1v1h4v2h-1v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6H3V4h4V3a1 1 0 0 1 1-1Zm-2 4v10h8V6H6Zm2 2h1.5v6H8V8Zm2.5 0H12v6h-1.5V8Z" />
+            </svg>
+            <span data-i18n="deletePreset"></span>
+        </button>
     </div>
 
-    <div class="section">
-        <div class="section-title">
-            <span><span data-i18n="users">Users</span> · <span id="userCount">0</span></span>
-            <button type="button" id="copyListBtn" class="btn-link" data-i18n="copyList">Copy list</button>
-        </div>
-        <div class="add-row">
-            <input type="text" id="usernameInput" autocomplete="off" spellcheck="false" />
-            <button type="button" id="addUserBtn" class="btn" data-i18n="add">Add</button>
-        </div>
-        <div class="user-list section" id="userList"></div>
+    <!-- Rule menu (⋮) -->
+    <div class="menu" id="ruleMenu" role="menu" hidden>
+        <button type="button" class="menu-item" role="menuitem" data-command="edit">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor"
+                    d="m13.6 2.6 3.8 3.8L7.8 16H4v-3.8l9.6-9.6Zm0 2.8L6 13v1h1l7.6-7.6-1-1Z" />
+            </svg>
+            <span data-i18n="editRule"></span>
+        </button>
+        <button type="button" class="menu-item" role="menuitem" data-command="flip">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M4 7h9.2l-2.6-2.6L12 3l5 5-5 5-1.4-1.4L13.2 9H4V7Zm12 6H6.8l2.6 2.6L8 17l-5-5 5-5 1.4 1.4L6.8 11H16v2Z" />
+            </svg>
+            <span id="flipLabel"></span>
+        </button>
+        <div class="menu-sep"></div>
+        <button type="button" class="menu-item danger" role="menuitem" data-command="delete">
+            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor"
+                    d="M8 2h4a1 1 0 0 1 1 1v1h4v2h-1v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6H3V4h4V3a1 1 0 0 1 1-1Zm-2 4v10h8V6H6Zm2 2h1.5v6H8V8Zm2.5 0H12v6h-1.5V8Z" />
+            </svg>
+            <span data-i18n="deleteRule"></span>
+        </button>
     </div>
 
-    <div class="section stats">
-        <div class="stat">
-            <span class="stat-value" id="messageCount">0</span>
-            <span class="stat-label" data-i18n="hiddenMessages">Hidden messages</span>
-        </div>
-        <div class="stat">
-            <span class="stat-value" id="savedCount">0</span>
-            <span class="stat-label" data-i18n="savedMessages">Saved messages</span>
-        </div>
+    <!-- Creating and editing a rule -->
+    <div class="sheet" id="ruleSheet" role="dialog" aria-modal="true" aria-labelledby="ruleSheetTitle" hidden>
+        <form class="sheet-panel" id="ruleForm" novalidate>
+            <h2 class="sheet-title" id="ruleSheetTitle"></h2>
+
+            <div class="field">
+                <span class="field-label" data-i18n="typeLabel"></span>
+                <div class="segmented" id="typeSeg" role="radiogroup">
+                    <button type="button" role="radio" data-type="role"></button>
+                    <button type="button" role="radio" data-type="user"></button>
+                    <button type="button" role="radio" data-type="badge"></button>
+                    <button type="button" role="radio" data-type="keyword"></button>
+                </div>
+            </div>
+
+            <div class="field">
+                <span class="field-label" data-i18n="actionLabel"></span>
+                <div class="segmented" id="actionSeg" role="radiogroup">
+                    <button type="button" role="radio" data-action="include">
+                        <span class="action-mark" id="includeMark"></span>
+                        <span data-i18n="include"></span>
+                    </button>
+                    <button type="button" role="radio" data-action="exclude">
+                        <span class="action-mark" id="excludeMark"></span>
+                        <span data-i18n="exclude"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="field" id="valueField">
+                <label class="field-label" for="valueInput" id="valueLabel"></label>
+                <input type="text" id="valueInput" class="input" autocomplete="off" spellcheck="false"
+                    list="badgeSuggestions" aria-describedby="valueHint valueError" />
+                <datalist id="badgeSuggestions"></datalist>
+                <p class="field-hint" id="valueHint"></p>
+                <p class="field-error" id="valueError" aria-live="polite"></p>
+            </div>
+
+            <div class="field" id="roleField">
+                <span class="field-label" id="roleLabel"></span>
+                <div class="roles" id="rolePicker"></div>
+                <p class="field-error" id="roleError" aria-live="polite"></p>
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="noteInput" data-i18n="noteLabel"></label>
+                <input type="text" id="noteInput" class="input" maxlength="60" autocomplete="off" />
+            </div>
+
+            <div class="sheet-actions">
+                <button type="button" class="btn ghost" id="ruleCancelBtn" data-i18n="cancel"></button>
+                <button type="submit" class="btn primary" id="ruleSaveBtn"></button>
+            </div>
+        </form>
     </div>
 
-    <details class="section">
-        <summary data-i18n="savedMessagesTitle">Saved messages</summary>
-        <div class="saved-messages" id="savedMessages"></div>
-    </details>
+    <!-- Preset name and channels -->
+    <div class="sheet" id="presetSheet" role="dialog" aria-modal="true" aria-labelledby="presetSheetTitle" hidden>
+        <form class="sheet-panel" id="presetForm" novalidate>
+            <h2 class="sheet-title" id="presetSheetTitle"></h2>
+            <div class="field">
+                <label class="field-label" for="presetNameInput" data-i18n="presetNameLabel"></label>
+                <input type="text" id="presetNameInput" class="input" maxlength="40" autocomplete="off" />
+                <p class="field-error" id="presetError" aria-live="polite"></p>
+            </div>
+            <div class="field">
+                <label class="field-label" for="presetChannelsInput" data-i18n="channelsLabel"></label>
+                <input type="text" id="presetChannelsInput" class="input" autocomplete="off" spellcheck="false"
+                    aria-describedby="presetChannelsHint presetChannelsError" />
+                <p class="field-hint" id="presetChannelsHint" data-i18n="channelsHint"></p>
+                <p class="field-error" id="presetChannelsError" aria-live="polite"></p>
+            </div>
+            <div class="sheet-actions">
+                <button type="button" class="btn ghost" id="presetCancelBtn" data-i18n="cancel"></button>
+                <button type="submit" class="btn primary" data-i18n="save"></button>
+            </div>
+        </form>
+    </div>
 
-    <button type="button" id="clearAllBtn" class="btn btn-danger" data-i18n="clearAll">Clear all</button>
+    <!-- Import a preset from the clipboard -->
+    <div class="sheet" id="importSheet" role="dialog" aria-modal="true" aria-labelledby="importSheetTitle" hidden>
+        <form class="sheet-panel" id="importForm" novalidate>
+            <h2 class="sheet-title" id="importSheetTitle" data-i18n="importPreset"></h2>
+            <div class="field">
+                <label class="field-label" for="importInput" data-i18n="importLabel"></label>
+                <textarea id="importInput" class="input" spellcheck="false"
+                    aria-describedby="importHint importError"></textarea>
+                <p class="field-hint" id="importHint" data-i18n="importHint"></p>
+                <p class="field-error" id="importError" aria-live="polite"></p>
+            </div>
+            <div class="sheet-actions">
+                <button type="button" class="btn ghost" id="importCancelBtn" data-i18n="cancel"></button>
+                <button type="submit" class="btn primary" data-i18n="importAction"></button>
+            </div>
+        </form>
+    </div>
 
+    <div class="toast" id="toast" role="status">
+        <span class="toast-text" id="toastText"></span>
+        <button type="button" class="toast-undo" id="toastUndo" data-i18n="undo"></button>
+    </div>
+
+    <script src="settings.js"></script>
     <script src="popup.js"></script>
 </body>
 

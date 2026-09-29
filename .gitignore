@@ -1,21 +1,21 @@
-# Сборка
+# Build
 dist/
 *.zip
 *.crx
 
-# Приватный ключ упаковки расширения
+# Private key for packing the extension
 *.pem
 
-# Зависимости и логи
+# Dependencies and logs
 node_modules/
 *.log
 
-# Редакторы
+# Editors
 .vscode/
 .idea/
 *.swp
 
-# Системные файлы
+# System files
 Thumbs.db
 Desktop.ini
 .DS_Store

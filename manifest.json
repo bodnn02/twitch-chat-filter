@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
     "name": "Chat Filter for Twitch",
-    "version": "1.4",
-    "description": "Show only the Twitch chat users you pick, or hide the ones you don't want, in a separate filtered chat.",
+    "version": "1.10",
+    "description": "A separate filtered Twitch chat built from your rules: users, roles, badges and keywords, with presets.",
     "permissions": [
         "storage"
     ],
@@ -15,6 +15,7 @@
                 "*://*.twitch.tv/*"
             ],
             "js": [
+                "settings.js",
                 "content.js"
             ],
             "css": [

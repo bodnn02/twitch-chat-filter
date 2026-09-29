@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Chat Filter for Twitch — стили интерфейса на странице Twitch
-   и в отдельном окне фильтрованного чата
+   Chat Filter for Twitch: styles of the UI on the Twitch page
+   and in the separate filtered chat window
    ========================================================================== */
 
 :root {
@@ -11,14 +11,12 @@
     --tcf-text: #efeff1;
     --tcf-text-muted: #adadb8;
     --tcf-accent: #9146ff;
-    --tcf-whitelist: #00ad03;
-    --tcf-blacklist: #eb0400;
     --tcf-radius: 6px;
     --tcf-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
     --tcf-font: Inter, Roobert, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-/* --- Контейнер двух чатов ----------------------------------------------- */
+/* --- Two-chat container ------------------------------------------------- */
 
 #twitch-dual-chat-container {
     position: relative;
@@ -32,7 +30,7 @@
     font-family: var(--tcf-font);
 }
 
-/* Во время перетаскивания разделителя не выделяем текст */
+/* Do not select text while dragging the divider */
 #twitch-dual-chat-container.resizing {
     user-select: none;
     cursor: ns-resize;
@@ -50,25 +48,22 @@
 }
 
 #twitch-filter-chat {
-    /* При нехватке места фильтрованный чат уступает высоту полю ввода */
+    /* When space is short, the filtered chat gives up height to the input */
     min-height: 40px;
     overflow: hidden;
+    /* A layer below the original chat: popups next to the input (channel point
+       rewards, emotes etc.) are shown over the filtered chat. z-index works on
+       flex items without position, so the shared container stays the reference for
+       Twitch panels */
+    z-index: 1;
 }
 
 #twitch-original-chat {
     min-height: 80px;
+    z-index: 2;
 }
 
-/* Цвет режима: метка в заголовке */
-#twitch-dual-chat-container[data-mode="whitelist"] {
-    --tcf-mode-color: var(--tcf-whitelist);
-}
-
-#twitch-dual-chat-container[data-mode="blacklist"] {
-    --tcf-mode-color: var(--tcf-blacklist);
-}
-
-/* --- Заголовки ------------------------------------------------------------ */
+/* --- Headers -------------------------------------------------------------- */
 
 .twitch-filter-header,
 .twitch-original-header {
@@ -87,10 +82,10 @@
     font-weight: 600;
 }
 
-/* Заголовок фильтрованного чата всегда кликабелен (поверх панелей Twitch) */
+/* The filtered chat header stays above its messages */
 .twitch-filter-header {
     position: relative;
-    z-index: 60;
+    z-index: 1;
 }
 
 .twitch-chat-title {
@@ -106,15 +101,29 @@
     text-overflow: ellipsis;
 }
 
+/* Label: name of the active preset or "Filter off" */
+.twitch-filter-mode:empty {
+    display: none;
+}
+
 .twitch-filter-mode {
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 50%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
     padding: 1px 6px;
     border-radius: 9px;
-    background-color: var(--tcf-mode-color, var(--tcf-accent));
+    background-color: var(--tcf-accent);
     color: #fff;
     font-size: 10px;
     font-weight: 700;
     line-height: 16px;
+}
+
+.twitch-filter-mode[data-state="off"] {
+    background-color: #53535f;
 }
 
 .twitch-filter-header-controls {
@@ -159,7 +168,7 @@
     display: none;
 }
 
-/* --- Разделитель ------------------------------------------------------------ */
+/* --- Divider ---------------------------------------------------------------- */
 
 #twitch-chat-resizer {
     position: relative;
@@ -168,7 +177,7 @@
     touch-action: none;
 }
 
-/* Видимая полоска тоньше области захвата */
+/* The visible bar is thinner than the grab area */
 #twitch-chat-resizer::after {
     content: "";
     position: absolute;
@@ -188,22 +197,22 @@
     background-color: var(--tcf-accent);
 }
 
-/* --- Скрытие одного из чатов ------------------------------------------------ */
+/* --- Hiding one of the chats ------------------------------------------------ */
 
-/* Разделитель не нужен, когда один из чатов скрыт */
+/* No divider when one of the chats is hidden */
 #twitch-dual-chat-container.original-hidden #twitch-chat-resizer,
 #twitch-dual-chat-container.filtered-hidden #twitch-chat-resizer {
     display: none;
 }
 
-/* Второй чат занимает всё место.
-   !important перекрывает инлайн-пропорции разделителя */
+/* The other chat takes all the space. !important overrides the inline
+   proportions of the divider */
 #twitch-dual-chat-container.original-hidden #twitch-filter-chat,
 #twitch-dual-chat-container.filtered-hidden #twitch-original-chat {
     flex: 1 1 auto !important;
 }
 
-/* Фильтрованный чат сворачивается до заголовка */
+/* The filtered chat collapses to its header */
 #twitch-dual-chat-container.filtered-hidden #twitch-filter-chat {
     flex: 0 0 auto !important;
     min-height: 0 !important;
@@ -213,8 +222,13 @@
     display: none;
 }
 
-/* Оригинальный чат сворачивается, но поле ввода сообщения остаётся
-   доступным — прячется только список сообщений */
+/* Both chats hidden: the input stays at the bottom of the column */
+#twitch-dual-chat-container.filtered-hidden.original-hidden #twitch-original-chat {
+    margin-top: auto;
+}
+
+/* The original chat collapses, but the message input stays available: only the
+   message list is hidden */
 #twitch-dual-chat-container.original-hidden #twitch-original-chat {
     flex: 0 0 auto !important;
     min-height: 0 !important;
@@ -224,14 +238,21 @@
     flex: 0 0 auto;
 }
 
+/* The list is collapsed rather than removed with display: none, otherwise the
+   Twitch panels above the filtered chat would disappear too if Twitch keeps
+   them inside the list wrapper */
 #twitch-dual-chat-container.original-hidden .twitch-original-content [data-a-target="chat-scroller"],
 #twitch-dual-chat-container.original-hidden .twitch-original-content .video-chat__message-list-wrapper,
 #twitch-dual-chat-container.original-hidden .twitch-original-content .chat-scrollable-area__message-container,
 #twitch-dual-chat-container.original-hidden .twitch-original-content [role="log"] {
-    display: none !important;
+    flex: 0 0 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
 }
 
-/* Контейнеры Twitch не должны резервировать высоту под скрытый список */
+/* Twitch containers must not reserve height for the hidden list */
 #twitch-dual-chat-container.original-hidden .twitch-original-content .chat-shell,
 #twitch-dual-chat-container.original-hidden .twitch-original-content .chat-room,
 #twitch-dual-chat-container.original-hidden .twitch-original-content .chat-room__content {
@@ -239,7 +260,7 @@
     min-height: 0 !important;
 }
 
-/* --- Фильтрованный чат -------------------------------------------------------- */
+/* --- Filtered chat ------------------------------------------------------------ */
 
 .twitch-filter-messages {
     flex: 1;
@@ -249,7 +270,7 @@
     padding: 4px 0;
 }
 
-/* Подсказка в пустом чате (текст задаётся в data-empty) */
+/* Hint in the empty chat (the text is set in data-empty) */
 .twitch-filter-messages:empty::before {
     content: attr(data-empty);
     display: block;
@@ -259,13 +280,14 @@
     text-align: center;
 }
 
-/* Внутри — копия сообщения Twitch со своими отступами и стилями */
+/* Inside: a copy of the Twitch message with its own paddings and styles */
 .twitch-filter-message {
     position: relative;
     overflow-wrap: anywhere;
 }
 
-/* Корень копии сообщения: в VOD это <li> вне списка — без маркера */
+/* Root of the message copy: in a VOD it is an <li> outside a list, without a
+   marker */
 .twitch-filter-clone {
     list-style: none;
 }
@@ -274,23 +296,17 @@
     background-color: rgba(255, 255, 255, 0.04);
 }
 
-/* Своё время (live чат) — в отступе слева от сообщения Twitch */
+/* Our time (live chat): in the message line before the badges and name */
 .twitch-filter-timestamp {
-    position: absolute;
-    left: 8px;
-    top: 5px;
+    margin-inline-end: 5px;
     color: var(--tcf-text-muted);
-    font-family: monospace;
-    font-size: 11px;
-    line-height: 20px;
-    pointer-events: none;
+    font-size: 0.85em;
+    font-variant-numeric: tabular-nums;
+    /* Tooltip with the full date and time */
+    cursor: default;
 }
 
-.twitch-filter-timestamp + .twitch-filter-clone {
-    padding-left: 60px !important;
-}
-
-/* --- Подсказка и меню сообщения ---------------------------------------------- */
+/* --- Message tooltip and menu ------------------------------------------------ */
 
 .twitch-filter-hovercard,
 .twitch-filter-menu {
@@ -302,7 +318,7 @@
     font-family: var(--tcf-font);
 }
 
-/* Подсказка при наведении на значки и смайлы */
+/* Tooltip on hover over badges and emotes */
 .twitch-filter-hovercard {
     z-index: 10000;
     display: none;
@@ -321,7 +337,7 @@
     max-height: 112px;
 }
 
-/* Копия меню сообщения («⋮» справа при наведении) */
+/* Copy of the message menu ("⋮" on the right on hover) */
 .twitch-filter-menu {
     z-index: 10001;
     display: flex;
@@ -348,24 +364,58 @@
     outline: none;
 }
 
-/* --- Скроллбары ----------------------------------------------------------------- */
+/* --- Scrollbars ----------------------------------------------------------------- */
 
-.twitch-filter-messages,
-.twitch-original-content {
-    scrollbar-width: thin;
-    scrollbar-color: #464649 transparent;
+/* Thin rounded thumb, brighter on hover. A transparent border with background-
+   clip keeps the thumb off the edge */
+@supports selector(::-webkit-scrollbar) {
+    /* scrollbar-color is inherited from the page and disables ::-webkit-scrollbar
+       in Chrome, so reset it */
+    .twitch-filter-messages {
+        scrollbar-color: auto;
+        scrollbar-width: auto;
+    }
 }
 
-/* --- Оригинальный чат Twitch внутри нашего контейнера -------------------------- */
+.twitch-filter-messages::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.twitch-filter-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.twitch-filter-messages::-webkit-scrollbar-thumb {
+    background-color: #464649;
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 5px;
+}
+
+.twitch-filter-messages::-webkit-scrollbar-thumb:hover {
+    background-color: #6b6b75;
+}
+
+/* Firefox */
+@supports not selector(::-webkit-scrollbar) {
+    .twitch-filter-messages {
+        scrollbar-width: thin;
+        scrollbar-color: #464649 transparent;
+    }
+}
+
+/* --- Original Twitch chat inside our container --------------------------------- */
 
 .twitch-original-content {
     flex: 1;
     min-height: 0;
-    overflow: hidden;
+    /* No overflow: hidden, otherwise the popups next to the input that open
+       upwards over the filtered chat get clipped */
 }
 
-/* Поле ввода сообщения всегда видимо: при нехватке места сжимается
-   только список сообщений, а не поле ввода */
+/* The message input is always visible: when space is short only the message
+   list shrinks, not the input */
 .twitch-original-content section.chat-room,
 .twitch-original-content .chat-room__content {
     position: static !important;
@@ -384,7 +434,7 @@
     min-height: 0 !important;
 }
 
-/* Кнопки поля ввода не должны выходить за границы */
+/* Input buttons must stay within bounds */
 .twitch-original-content .chat-input {
     flex-shrink: 0 !important;
     box-sizing: border-box;
@@ -407,23 +457,21 @@
     border-radius: 0 !important;
 }
 
-/* Верхние панели Twitch (закреплённые сообщения, cheering, hype train)
-   остаются в DOM у Twitch (физический перенос ломает React), но визуально
-   выводятся поверх верха колонки чата — над фильтрованным чатом */
-.twitch-original-content .chat-room__content > div:has([class*="community-highlight"]),
-.twitch-original-content .chat-room__content > div:has([class*="bitsLeaderboard"]),
-.twitch-original-content .chat-room__content > div:has([class*="hype-train"]) {
-    position: absolute !important;
-    /* Ниже заголовка фильтрованного чата, чтобы не закрывать его кнопки */
-    top: 34px;
-    left: 0;
-    right: 0;
-    z-index: 50;
-    max-height: 35%;
-    overflow-y: auto;
+/* Twitch top panels (leaderboard, pinned message, hype train, polls) are
+   pinned above the filtered chat. Coordinates, width and the filtered chat
+   offset are set by content.js (layoutTopPanels). visibility: visible keeps
+   the panels visible even when the original chat is hidden */
+.twitch-original-content .twitch-filter-top-panel {
+    position: fixed !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: 3;
+    margin: 0 !important;
+    box-sizing: border-box;
+    visibility: visible !important;
 }
 
-/* --- Отдельное окно фильтрованного чата ------------------------------------------ */
+/* --- Separate filtered chat window ----------------------------------------------- */
 
 .twitch-filter-popout {
     display: flex;
@@ -435,7 +483,7 @@
     font: 13px/20px var(--tcf-font);
 }
 
-/* --- Узкая колонка чата ------------------------------------------------------------ */
+/* --- Narrow chat column ------------------------------------------------------------ */
 
 @media (max-width: 768px) {
     .twitch-filter-header,

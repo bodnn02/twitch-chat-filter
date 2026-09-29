@@ -1,241 +1,54 @@
 # Chat Filter for Twitch
 
-A Chrome extension that provides advanced chat filtering for Twitch streams with dual chat view functionality.
+A Chrome extension that adds a second, filtered chat to Twitch. It shows only the messages you care about: from chosen users, roles, badges or with keywords. The original chat stays right below it.
 
-## 🌍 Languages | Языки
-- [English](#english)
-- [Русский](#русский)
+[Русский](#русский)
 
----
+<p align="center">
+  <img src="screenshots/dual-chat-view.png" width="260" alt="Filtered chat above the original Twitch chat">
+  &nbsp;
+  <img src="screenshots/extension-popup.png" width="260" alt="Extension menu with filter rules">
+  &nbsp;
+  <img src="screenshots/rule-editor.png" width="260" alt="Creating a rule">
+</p>
 
-## English
+## Features
 
-### 📷 Screenshots
+- **Two chats in one column.** The filtered chat sits above the original one. Drag the divider to resize, hide either chat, or open it in a separate window.
+- **Rules** by user, role (streamer, moderators, VIPs, verified, subscribers, Twitch staff, chatbots), badge name or keyword. Each rule either shows (+) or hides (−) messages, and hide rules win. Rules can be turned off without deleting them.
+- **Presets.** Save sets of rules and bind a preset to channels, so it turns on automatically when you watch them. Presets can be copied to the clipboard and imported on another device.
+- **Works like the real chat.** Badges, emotes, user cards, the message menu and VOD timestamps work in the filtered chat. The leaderboard and pinned messages stay above it.
+- Live streams and VODs. English and Russian interface.
 
-![Dual Chat View](screenshots/dual-chat-view.png)
-*Dual chat view showing filtered and original chat side by side*
+## Install
 
-![Extension Settings](screenshots/extension-popup.png)
-*Extension popup with filtering settings and saved messages*
+1. Download or clone this repository.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Click **Load unpacked** and select the project folder.
 
-### ✨ Features
+## Usage
 
-- **Dual Chat Display**: View filtered and original chat simultaneously in split view
-- **Two Filtering Modes**:
-  - **Whitelist Mode**: Show only messages from selected users
-  - **Blacklist Mode**: Hide messages from selected users
-- **Message Saving**: Automatically save messages from whitelisted users
-- **Real-time Filtering**: Instant filtering of new messages as they appear
-- **Customizable Interface**: Toggle original chat visibility, modern dark theme
-- **Statistics Tracking**: Count filtered and saved messages
-- **Cross-Platform**: Works on both live streams and VODs
+Open a Twitch channel, click the extension icon and create rules with **Create**. You can also type a username in the search field and press Enter. Your own messages are always shown.
 
-### 🚀 Installation
+## Privacy
 
-1. Download or clone this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the extension folder
-5. The extension icon will appear in your Chrome toolbar
+No servers, analytics or tracking. Settings are stored in your browser. See [PRIVACY.md](PRIVACY.md).
 
-### 🎯 How to Use
-
-1. **Navigate to any Twitch stream or VOD**
-2. **Click the extension icon** in your Chrome toolbar
-3. **Choose filtering mode**:
-   - Select "Whitelist" to show only specific users
-   - Select "Blacklist" to hide specific users
-4. **Add usernames** to your filter list
-5. **Enable the filter** with the toggle button
-6. **View results** in the dual chat layout
-
-### 🔧 Configuration
-
-- **Mode Selection**: Switch between Whitelist and Blacklist modes
-- **User Management**: Add/remove users from filter lists
-- **Filter Toggle**: Enable/disable filtering without losing settings
-- **Original Chat Toggle**: Hide/show original chat using the eye button
-- **Saved Messages**: View saved messages from whitelisted users
-
-### 📱 Compatibility
-
-- **Browsers**: Chrome, Chromium-based browsers
-- **Twitch**: Live streams, VODs, all channel types
-- **Responsive**: Works on desktop and mobile layouts
-
-### 🛠️ Technical Details
-
-- **Manifest Version**: 3
-- **Permissions**: Storage, Active Tab, Twitch.tv host access
-- **Real-time Processing**: DOM mutation observers for instant filtering
-- **Data Persistence**: Settings and messages saved locally
-- **Performance Optimized**: Minimal impact on page performance
-
-### 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### 🐛 Bug Reports
-
-Found a bug? Please create an issue with:
-- Steps to reproduce
-- Expected vs actual behavior
-- Browser and extension version
-- Twitch page URL where the issue occurred
+What changed between versions: [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
 ## Русский
 
-### 📷 Скриншоты
+Расширение для Chrome, которое добавляет на Twitch второй, фильтрованный чат. В нём видны только нужные сообщения: от выбранных пользователей, ролей, со значками или ключевыми словами. Оригинальный чат остаётся под ним.
 
-![Двойной вид чата](screenshots/dual-chat-view.png)
-*Двойной вид чата с отфильтрованными и оригинальными сообщениями*
+**Возможности**
 
-![Настройки расширения](screenshots/extension-popup.png)
-*Всплывающее окно расширения с настройками фильтрации и сохраненными сообщениями*
+- **Два чата в одной колонке.** Размер меняется перетаскиванием разделителя, любой чат можно скрыть или открыть в отдельном окне.
+- **Правила** по нику, роли (стример, модераторы, VIP, подтверждённые, подписчики, команда Twitch, чат-боты), названию значка или ключевому слову. Правило показывает (+) или скрывает (−) сообщения, скрытие важнее. Правило можно выключить, не удаляя.
+- **Наборы правил.** Набор можно привязать к каналам — он включится сам при просмотре их трансляций. Наборы копируются в буфер обмена и импортируются на другом устройстве.
+- **Работает как обычный чат.** Значки, смайлы, карточки пользователей, меню сообщения и таймкоды VOD. Leaderboard и закреплённые сообщения остаются над фильтрованным чатом.
 
-### ✨ Возможности
+**Установка:** скачайте репозиторий, откройте `chrome://extensions`, включите **Режим разработчика**, нажмите **Загрузить распакованное расширение** и выберите папку проекта.
 
-- **Двойной вид чата**: Просмотр отфильтрованного и оригинального чата одновременно
-- **Два режима фильтрации**:
-  - **Режим Whitelist**: Показ только сообщений от выбранных пользователей
-  - **Режим Blacklist**: Скрытие сообщений от выбранных пользователей
-- **Сохранение сообщений**: Автоматическое сохранение сообщений от пользователей из whitelist
-- **Фильтрация в реальном времени**: Мгновенная фильтрация новых сообщений
-- **Настраиваемый интерфейс**: Переключение видимости оригинального чата, современная темная тема
-- **Отслеживание статистики**: Подсчет отфильтрованных и сохраненных сообщений
-- **Кроссплатформенность**: Работает на live-стримах и VOD
-
-### 🚀 Установка
-
-1. Скачайте или клонируйте этот репозиторий
-2. Откройте Chrome и перейдите на `chrome://extensions/`
-3. Включите "Режим разработчика" в правом верхнем углу
-4. Нажмите "Загрузить распакованное расширение" и выберите папку расширения
-5. Иконка расширения появится в панели инструментов Chrome
-
-### 🎯 Как использовать
-
-1. **Перейдите на любой стрим или VOD на Twitch**
-2. **Нажмите на иконку расширения** в панели инструментов Chrome
-3. **Выберите режим фильтрации**:
-   - Выберите "Whitelist" для показа только определенных пользователей
-   - Выберите "Blacklist" для скрытия определенных пользователей
-4. **Добавьте никнеймы** в список фильтрации
-5. **Включите фильтр** кнопкой переключения
-6. **Просматривайте результаты** в двойном виде чата
-
-### 🔧 Настройка
-
-- **Выбор режима**: Переключение между режимами Whitelist и Blacklist
-- **Управление пользователями**: Добавление/удаление пользователей из списков фильтрации
-- **Переключение фильтра**: Включение/отключение фильтрации без потери настроек
-- **Переключение оригинального чата**: Скрытие/показ оригинального чата кнопкой-глазом
-- **Сохраненные сообщения**: Просмотр сохраненных сообщений от пользователей из whitelist
-
-### 📱 Совместимость
-
-- **Браузеры**: Chrome, браузеры на основе Chromium
-- **Twitch**: Live-стримы, VOD, все типы каналов
-- **Адаптивность**: Работает на десктопных и мобильных макетах
-
-### 🛠️ Технические детали
-
-- **Версия манифеста**: 3
-- **Разрешения**: Storage, Active Tab, доступ к хосту Twitch.tv
-- **Обработка в реальном времени**: DOM mutation observers для мгновенной фильтрации
-- **Сохранение данных**: Настройки и сообщения сохраняются локально
-- **Оптимизированная производительность**: Минимальное влияние на производительность страницы
-
-### 🤝 Участие в разработке
-
-1. Сделайте fork репозитория
-2. Создайте ветку для новой функции (`git checkout -b feature/amazing-feature`)
-3. Зафиксируйте изменения (`git commit -m 'Добавить amazing feature'`)
-4. Отправьте в ветку (`git push origin feature/amazing-feature`)
-5. Откройте Pull Request
-
-### 📄 Лицензия
-
-Этот проект лицензирован под лицензией MIT - подробности см. в файле [LICENSE](LICENSE).
-
-### 🐛 Сообщения об ошибках
-
-Нашли ошибку? Пожалуйста, создайте issue с:
-- Шагами для воспроизведения
-- Ожидаемым и фактическим поведением
-- Версией браузера и расширения
-- URL страницы Twitch, где произошла ошибка
-
----
-
-## 📁 File Structure
-
-```
-twitch-chat-filter/
-├── manifest.json          # Extension configuration
-├── popup.html             # Extension popup interface
-├── popup.js               # Popup logic
-├── content.js             # Main filtering logic
-├── styles.css             # Custom chat styles
-├── screenshots/           # Screenshots folder
-│   ├── dual-chat-view.png
-│   └── extension-popup.png
-├── icons/                 # Extension icons
-│   ├── icon16.png
-│   ├── icon32.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md             # This file
-```
-
-## 🔄 Version History
-
-### v1.4.0
-- Fixed filtering when Twitch reuses chat elements for new messages (VOD chat)
-- Filtered chat shows full Twitch messages: name colors, badges, emotes, stickers, mentions
-- Clicks in the filtered chat work like in the original one: user card, emote card, message menu, VOD timestamp seek
-- Hover card with a larger image and name for badges and emotes
-- Emote-only messages are no longer dropped
-- User list is backed up on twitch.tv and restored after reinstalling the extension; list can be copied and pasted in bulk
-- Redesigned popup and chat headers (SVG icons, mode badge, empty-state hints, localized tooltips)
-- Double-click the divider to reset the 50/50 split
-
-### v1.3.0
-- Fixed live chat filtering (updated selectors for the current Twitch DOM: `.chat-line__message`)
-- Resizable split between filtered and original chat (drag the divider; ratio is remembered)
-- Pop-out buttons: filtered chat opens in its own window, original chat uses Twitch's native popout
-- Your own messages are always shown in the filtered chat regardless of mode
-- Filtering matches users by login (`data-a-user`) instead of the display name
-
-### v1.2.0
-- Security: chat messages and usernames are rendered as plain text (fixed HTML injection)
-- Fixed duplicate messages in the filtered chat (deduplication no longer depends on timestamps)
-- Saved messages and counters moved to `chrome.storage.local` (no more sync quota errors); writes are batched
-- Saved messages are persisted even when the popup is closed
-- Settings now propagate to all open Twitch tabs via `storage.onChanged` (removed `activeTab` permission)
-- Toggling the filter off now shows all messages in the filtered chat
-- Incremental message rendering instead of rebuilding the whole chat on every message
-- Proper cleanup on Twitch SPA navigation (no duplicated containers or leaked observers)
-- Auto-scroll pauses when you scroll up to read history
-- Localized display names ("Name (login)") are matched by login
-
-### v1.0.0
-- Initial release
-- Basic whitelist/blacklist filtering
-- Dual chat view
-- Message saving functionality
-- Real-time filtering
-
----
-
-## ⭐ Star this repository if you find it useful!
+**Использование:** откройте канал на Twitch, нажмите на иконку расширения и создайте правила кнопкой **Создать** — или введите ник в поле поиска и нажмите Enter. Ваши собственные сообщения видны всегда.

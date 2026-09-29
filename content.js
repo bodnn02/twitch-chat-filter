@@ -1,46 +1,46 @@
-// Ключ резервной копии настроек в localStorage сайта twitch.tv
+// Key of the settings backup in the twitch.tv localStorage
 const BACKUP_KEY = 'twitchChatFilterBackup';
 
-// Иконки кнопок: SVG выглядит одинаково на всех системах, в отличие от эмодзи
+// Button icons: SVG looks the same on every system, unlike emoji
 const ICONS = {
     eye: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M10 4C5 4 1.7 8.3 1.1 9.4a1.2 1.2 0 0 0 0 1.2C1.7 11.7 5 16 10 16s8.3-4.3 8.9-5.4a1.2 1.2 0 0 0 0-1.2C18.3 8.3 15 4 10 4Zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>',
     eyeOff: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.7 1.3 1.3 2.7l3 3C2.6 7 1.5 8.7 1.1 9.4a1.2 1.2 0 0 0 0 1.2C1.7 11.7 5 16 10 16c1.6 0 3-.4 4.2-1.1l3.1 3.1 1.4-1.4-16-16.3ZM10 14a4 4 0 0 1-3.9-4.9l1.6 1.6a2 2 0 0 0 1.6 1.6l1.6 1.6c-.3.1-.6.1-.9.1Zm8.9-4.6C18.3 8.3 15 4 10 4c-1 0-1.9.2-2.8.5l1.7 1.6A4 4 0 0 1 14 11l2.6 2.6c1.2-1.2 2-2.4 2.3-3a1.2 1.2 0 0 0 0-1.2Z"/></svg>',
     popout: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 3h6v6h-2V6.4l-5.3 5.3-1.4-1.4L13.6 5H11V3ZM3 5a2 2 0 0 1 2-2h4v2H5v10h10v-4h2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Z"/></svg>'
 };
 
-// Переводы интерфейса внутри страницы Twitch
+// UI strings shown on the Twitch page
 const TRANSLATIONS = {
     en: {
         filteredChat: 'Filtered chat',
         originalChat: 'Original chat',
-        modes: { whitelist: 'Whitelist', blacklist: 'Blacklist' },
+        filterOff: 'Filter off',
         messages: n => `${n} ${n === 1 ? 'message' : 'messages'}`,
         openPopout: 'Open in separate window',
         openOriginalPopout: 'Open chat in separate window',
         hideChat: 'Hide chat',
         showChat: 'Show chat',
         resize: 'Drag to resize',
-        emptyNoUsers: 'The list is empty — add users in the extension menu',
-        emptyWhitelist: 'No messages from users in the list yet',
+        emptyNoRules: 'No rules that show messages — add them in the extension menu',
+        emptyFiltered: 'No matching messages yet',
         emptyAll: 'No messages yet'
     },
     ru: {
         filteredChat: 'Фильтрованный чат',
         originalChat: 'Оригинальный чат',
-        modes: { whitelist: 'Белый список', blacklist: 'Чёрный список' },
+        filterOff: 'Фильтр выключен',
         messages: n => `${n} ${pluralRu(n, 'сообщение', 'сообщения', 'сообщений')}`,
         openPopout: 'Открыть в отдельном окне',
         openOriginalPopout: 'Открыть чат в отдельном окне',
         hideChat: 'Скрыть чат',
         showChat: 'Показать чат',
         resize: 'Потяните, чтобы изменить размер',
-        emptyNoUsers: 'Список пуст — добавьте ники в меню расширения',
-        emptyWhitelist: 'Пока нет сообщений от пользователей из списка',
+        emptyNoRules: 'Нет правил, которые показывают сообщения, — добавьте их в меню расширения',
+        emptyFiltered: 'Пока нет подходящих сообщений',
         emptyAll: 'Пока нет сообщений'
     }
 };
 
-// 1 сообщение, 2 сообщения, 5 сообщений
+// Russian plural forms: 1 сообщение, 2 сообщения, 5 сообщений
 function pluralRu(n, one, few, many) {
     const mod10 = n % 10;
     const mod100 = n % 100;
@@ -51,186 +51,163 @@ function pluralRu(n, one, few, many) {
 
 class TwitchChatFilter {
     constructor() {
-        this.usersList = [];
-        // Тот же список для быстрой проверки на каждом сообщении
-        this.usersSet = new Set();
+        // Settings from settings.js (FilterStore.normalizeState)
+        this.state = null;
         this.isFilterEnabled = true;
-        this.hiddenMessagesCount = 0;
-        this.savedMessagesCount = 0;
-        this.mode = 'whitelist';
+        // Enabled rules of the active preset, split by action
+        this.includeRules = [];
+        this.excludeRules = [];
+        this.presetName = '';
         this.observer = null;
         this.chatContainer = null;
 
-        // Элементы нашего интерфейса (создаются в createCustomChat)
+        // Our UI elements (created in createCustomChat)
         this.dualContainer = null;
         this.customChatContainer = null;
         this.originalChatContainer = null;
         this.messagesContainer = null;
-        // Элемент сообщения -> сигнатура его содержимого (Twitch может
-        // переиспользовать один и тот же <li> для разных сообщений)
+        // Message element -> signature of its content (Twitch may reuse the same <li>
+        // for different messages)
         this.processedElements = new WeakMap();
-        // Уже показанные VOD-сообщения (время|логин|текст) — защита от
-        // дублей, когда содержимое «переезжает» между элементами списка
+        // Message element -> { signature, time }: when the message arrived. Not reset
+        // when settings change, so message times are kept
+        this.messageTimes = new WeakMap();
+        // VOD messages already shown (time|login|text): protects against duplicates
+        // when content moves between list items
         this.seenVodMessages = new Set();
         this.filteredMessages = [];
-        // Обёртка в фильтрованном чате -> данные сообщения (для кликов)
+        // Wrapper in the filtered chat -> message data (for clicks)
         this.renderedMessages = new WeakMap();
-        // Открытая копия меню сообщения (см. showProxyMenu)
+        // Open copy of a message menu (see showProxyMenu)
         this.proxyMenu = null;
         this.suppressClickOn = null;
         this.maxDisplayedMessages = 200;
         this.currentLanguage = 'en';
 
-        // Доля высоты фильтрованного чата (регулируется разделителем)
+        // Share of the height taken by the filtered chat (set by the divider)
         this.splitRatio = 0.5;
 
-        // Отдельное окно фильтрованного чата
+        // Filtered chat in a separate window
         this.popoutWindow = null;
         this.popoutCheckTimer = null;
         this.popoutRulesCount = null;
         this.extensionCssPromise = null;
 
-        // Логин текущего пользователя (его сообщения не фильтруются)
+        // Login of the current user (their messages are never filtered out)
         this.ownLogin = null;
 
-        // Отслеживание изменения размеров поля ввода
+        // Watches the size of the message input
         this.inputResizeObserver = null;
 
-        // Буфер сообщений для отложенной записи в storage
-        this.pendingSavedMessages = [];
+        // Twitch top panels above the filtered chat (see setupTopPanels)
+        this.topPanels = new Set();
+        this.topPanelsMutation = null;
+        this.topPanelsResize = null;
+        this.topPanelsFrame = null;
+        this.topPanelsWindowHandler = null;
 
-        // Таймеры (для отмены при навигации)
+        // Timers (cancelled on navigation)
         this.waitTimer = null;
         this.processTimer = null;
-        this.statsTimer = null;
-        this.saveTimer = null;
+        this.reloadTimer = null;
 
         this.init();
     }
 
-    // Переводы для текущего языка
+    // Strings for the current language
     get t() {
         return TRANSLATIONS[this.currentLanguage] || TRANSLATIONS.en;
     }
 
-    setUsersList(list) {
-        this.usersList = list || [];
-        this.usersSet = new Set(this.usersList.map(name => name.toLowerCase()));
+    setState(state) {
+        this.state = state;
+        this.isFilterEnabled = state.isFilterEnabled;
+        // 'system' means the browser language
+        this.currentLanguage = FilterStore.resolveLanguage(state.language);
+
+        // Preset bound to the open channel, or the default preset
+        const preset = FilterStore.getPresetForChannel(state, FilterStore.channelFromUrl(location.href));
+        this.presetName = preset.name;
+
+        // match: the value for case-insensitive comparison
+        const rules = preset.rules
+            .filter(rule => rule.enabled)
+            .map(rule => ({ ...rule, match: rule.value.toLowerCase() }));
+        this.includeRules = rules.filter(rule => rule.action === 'include');
+        this.excludeRules = rules.filter(rule => rule.action === 'exclude');
     }
 
     async init() {
         await this.loadSettings();
         this.waitForChat();
 
-        // Настройки меняются из popup через storage — работает для всех
-        // открытых вкладок Twitch, а не только активной
+        // Settings are changed from the popup via storage, so this works for every
+        // open Twitch tab, not just the active one. The popup writes several keys at
+        // once, so reload only once
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            if (areaName === 'sync') {
-                let settingsChanged = false;
+            if (areaName !== 'sync') return;
 
-                if (changes.usersList) {
-                    this.setUsersList(changes.usersList.newValue);
-                    settingsChanged = true;
-                }
-                if (changes.isFilterEnabled) {
-                    this.isFilterEnabled = changes.isFilterEnabled.newValue !== false;
-                    settingsChanged = true;
-                }
-                if (changes.mode) {
-                    this.mode = changes.mode.newValue || 'whitelist';
-                    settingsChanged = true;
-                }
-                if (changes.language) {
-                    this.currentLanguage = changes.language.newValue || 'en';
-                    this.updateInterfaceTexts();
-                }
-
-                this.writeBackup();
-
-                if (settingsChanged) {
-                    this.applySettings();
-                }
-            }
-
-            if (areaName === 'local') {
-                // Сброс статистики из popup («Очистить все»)
-                if (changes.hiddenMessagesCount &&
-                    changes.hiddenMessagesCount.newValue === 0 &&
-                    this.hiddenMessagesCount !== 0) {
-                    this.hiddenMessagesCount = 0;
-                }
-                if (changes.savedMessagesCount &&
-                    changes.savedMessagesCount.newValue === 0 &&
-                    this.savedMessagesCount !== 0) {
-                    this.savedMessagesCount = 0;
-                    this.pendingSavedMessages = [];
-                }
-            }
+            clearTimeout(this.reloadTimer);
+            this.reloadTimer = setTimeout(() => this.reloadSettings(), 100);
         });
     }
 
     async loadSettings() {
-        const syncData = await chrome.storage.sync.get([
-            'usersList', 'isFilterEnabled', 'mode', 'language'
-        ]);
-        const localData = await chrome.storage.local.get([
-            'hiddenMessagesCount', 'savedMessagesCount', 'chatSplitRatio'
-        ]);
+        // The extension was just installed: settings are restored from the backup on
+        // the Twitch site
+        const state = await FilterStore.loadAndMigrate(() => this.readBackup());
+        const localData = await chrome.storage.local.get(['chatSplitRatio']);
 
-        // Расширение только что установлено (списка в storage ещё нет) —
-        // восстанавливаем настройки из резервной копии на сайте Twitch
-        if (syncData.usersList === undefined) {
-            const backup = this.readBackup();
-            if (backup) {
-                Object.assign(syncData, backup);
-                await chrome.storage.sync.set(backup);
-            }
-        }
-
-        this.setUsersList(syncData.usersList);
-        this.isFilterEnabled = syncData.isFilterEnabled !== false;
-        this.mode = syncData.mode || 'whitelist';
-        this.currentLanguage = syncData.language || 'en';
-        this.hiddenMessagesCount = localData.hiddenMessagesCount || 0;
-        this.savedMessagesCount = localData.savedMessagesCount || 0;
+        this.setState(state);
         this.splitRatio = localData.chatSplitRatio || 0.5;
 
         this.writeBackup();
     }
 
-    // Резервная копия настроек в localStorage сайта twitch.tv: при удалении
-    // расширения chrome.storage очищается, а данные сайта остаются
+    async reloadSettings() {
+        let state;
+        try {
+            ({ state } = await FilterStore.load());
+        } catch (error) {
+            // The extension context may have been invalidated (extension update)
+            return;
+        }
+
+        const previous = this.state;
+        this.setState(state);
+        this.writeBackup();
+
+        // Only the language changed: no need to filter again
+        const filterChanged = JSON.stringify({ ...previous, language: '' }) !==
+            JSON.stringify({ ...state, language: '' });
+        if (filterChanged) {
+            this.applySettings();
+        } else {
+            this.updateInterfaceTexts();
+        }
+    }
+
+    // Settings backup in the twitch.tv localStorage: chrome.storage is cleared
+    // when the extension is removed, but site data stays
     readBackup() {
         try {
             const backup = JSON.parse(localStorage.getItem(BACKUP_KEY));
-            if (backup && Array.isArray(backup.usersList)) {
-                return {
-                    usersList: backup.usersList.filter(name => typeof name === 'string'),
-                    mode: backup.mode === 'blacklist' ? 'blacklist' : 'whitelist',
-                    isFilterEnabled: backup.isFilterEnabled !== false,
-                    language: backup.language === 'ru' ? 'ru' : 'en'
-                };
-            }
+            if (backup && typeof backup === 'object') return backup;
         } catch (error) {
-            // Повреждённая копия или localStorage недоступен
+            // Corrupted backup or localStorage is unavailable
         }
         return null;
     }
 
     writeBackup() {
         try {
-            localStorage.setItem(BACKUP_KEY, JSON.stringify({
-                usersList: this.usersList,
-                mode: this.mode,
-                isFilterEnabled: this.isFilterEnabled,
-                language: this.currentLanguage
-            }));
+            localStorage.setItem(BACKUP_KEY, JSON.stringify(this.state));
         } catch (error) {
-            // localStorage недоступен (например, заблокированы данные сайтов)
+            // localStorage is unavailable (e.g. site data is blocked)
         }
     }
 
-    // Применение новых настроек: пересобираем состояние из текущего DOM
+    // Apply new settings: rebuild the state from the current DOM
     applySettings() {
         this.resetProcessed();
         this.filteredMessages = [];
@@ -245,7 +222,7 @@ class TwitchChatFilter {
         }
 
         const checkChat = () => {
-            // Чат уже найден и всё ещё в документе — ничего не делаем
+            // The chat is already found and still in the document: nothing to do
             if (this.chatContainer && this.chatContainer.isConnected) {
                 return;
             }
@@ -266,9 +243,8 @@ class TwitchChatFilter {
                 let container = document.querySelector(selector);
 
                 if (container) {
-                    // Наблюдаем за обёрткой, а не за <ul> внутри неё: Twitch
-                    // может пересоздать список, и наблюдатель остался бы
-                    // на оторванном элементе
+                    // Observe the wrapper rather than the <ul> inside it: Twitch may recreate the
+                    // list and the observer would stay on a detached element
                     this.chatContainer = container;
 
                     this.createCustomChat();
@@ -284,7 +260,7 @@ class TwitchChatFilter {
         checkChat();
     }
 
-    // Очистка при SPA-навигации между страницами Twitch
+    // Cleanup on SPA navigation between Twitch pages
     cleanup() {
         this.closeProxyMenu(false);
 
@@ -302,6 +278,8 @@ class TwitchChatFilter {
             this.inputResizeObserver = null;
         }
 
+        this.stopTopPanels();
+
         this.removeDualContainer(document.getElementById('twitch-dual-chat-container'));
 
         this.chatContainer = null;
@@ -313,7 +291,7 @@ class TwitchChatFilter {
         this.filteredMessages = [];
     }
 
-    // Убираем наш контейнер, возвращая оригинальный чат на место
+    // Remove our container and put the original chat back
     removeDualContainer(dualContainer) {
         if (!dualContainer) return;
 
@@ -324,8 +302,8 @@ class TwitchChatFilter {
         dualContainer.remove();
     }
 
-    // Все тексты интерфейса в одном месте: вызывается при создании чата
-    // и при смене языка, режима или списка
+    // All UI texts in one place: called when the chat is created and when the
+    // language, filter settings or list change
     updateInterfaceTexts() {
         if (!this.dualContainer) return;
 
@@ -333,11 +311,11 @@ class TwitchChatFilter {
         const filteredHidden = this.dualContainer.classList.contains('filtered-hidden');
         const originalHidden = this.dualContainer.classList.contains('original-hidden');
 
-        this.dualContainer.setAttribute('data-mode', this.mode);
-
         this.customChatContainer.querySelector('.twitch-chat-title-text').textContent = t.filteredChat;
-        this.customChatContainer.querySelector('.twitch-filter-mode').textContent =
-            this.isFilterEnabled ? t.modes[this.mode] : '—';
+        // Label: name of the active preset or "Filter off"
+        const stateLabel = this.customChatContainer.querySelector('.twitch-filter-mode');
+        stateLabel.textContent = this.isFilterEnabled ? this.presetName : t.filterOff;
+        stateLabel.dataset.state = this.isFilterEnabled ? 'on' : 'off';
         this.originalChatContainer.querySelector('.twitch-chat-title-text').textContent = t.originalChat;
 
         this.setButtonLabel(this.customChatContainer.querySelector('.twitch-popout-filtered'), t.openPopout);
@@ -352,17 +330,17 @@ class TwitchChatFilter {
         const popoutList = this.getPopoutList();
         if (popoutList) {
             popoutList.dataset.empty = emptyText;
-            this.popoutWindow.document.title = `${t.filteredChat} — ${t.modes[this.mode]}`;
+            this.popoutWindow.document.title = t.filteredChat;
         }
 
         this.updateMessageCount();
     }
 
-    // Подсказка в пустом фильтрованном чате
+    // Hint in the empty filtered chat
     getEmptyText() {
         const t = this.t;
-        if (!this.isFilterEnabled || this.mode === 'blacklist') return t.emptyAll;
-        return this.usersSet.size ? t.emptyWhitelist : t.emptyNoUsers;
+        if (!this.isFilterEnabled) return t.emptyAll;
+        return this.includeRules.length ? t.emptyFiltered : t.emptyNoRules;
     }
 
     setButtonLabel(button, label) {
@@ -380,18 +358,18 @@ class TwitchChatFilter {
         const existing = document.getElementById('twitch-dual-chat-container');
         if (existing) {
             if (existing === this.dualContainer) return;
-            // Остался от предыдущего запуска (например, расширение
-            // перезагрузили) — его обработчики уже не работают
+            // Left over from a previous run (e.g. the extension was reloaded): its
+            // handlers no longer work
             this.removeDualContainer(existing);
         }
 
-        // Находим оригинальный чат
+        // Find the original chat
         const originalChatWrapper = document.querySelector('.video-chat__message-list-wrapper') ||
             document.querySelector('[data-a-target="chat-scroller"]')?.closest('.chat-shell, .chat-room');
 
         if (!originalChatWrapper) return;
 
-        // Запоминаем место оригинального чата до манипуляций
+        // Remember where the original chat was before moving it
         const chatParent = originalChatWrapper.parentNode;
         const nextSibling = originalChatWrapper.nextSibling;
 
@@ -432,15 +410,15 @@ class TwitchChatFilter {
         this.originalChatContainer = dualChatContainer.querySelector('#twitch-original-chat');
         this.messagesContainer = dualChatContainer.querySelector('.twitch-filter-messages');
 
-        // height: 100% не учитывает соседние элементы колонки (заголовок
-        // «STREAM CHAT» и т.п.) — контейнер вылезает за низ экрана вместе
-        // с кнопками поля ввода. В flex-колонке занимаем оставшееся место
-        // через flex, как это делал сам chat-room
+        // height: 100% ignores the other items of the column (the "STREAM CHAT" header
+        // etc.), so the container would overflow the bottom of the screen together
+        // with the input buttons. In a flex column take the remaining space via flex,
+        // as chat-room itself did
         if (window.getComputedStyle(chatParent).display.includes('flex')) {
             dualChatContainer.style.height = 'auto';
             dualChatContainer.style.flex = '1 1 0%';
         } else {
-            // Не flex: вычитаем из 100% высоту соседних элементов колонки
+            // Not flex: subtract the height of the other column items from 100%
             const siblingsHeight = Array.from(chatParent.children)
                 .filter(el => el !== originalChatWrapper)
                 .reduce((sum, el) => sum + el.offsetHeight, 0);
@@ -449,8 +427,7 @@ class TwitchChatFilter {
             }
         }
 
-        // Перемещаем оригинальный чат в наш контейнер и ставим контейнер
-        // на его место
+        // Move the original chat into our container and put the container in its place
         const originalContent = this.originalChatContainer.querySelector('.twitch-original-content');
         originalContent.appendChild(originalChatWrapper);
         chatParent.insertBefore(dualChatContainer, nextSibling);
@@ -463,11 +440,189 @@ class TwitchChatFilter {
         this.setupPopoutButtons();
         this.setupMessageInteractions(this.messagesContainer);
         this.setupInputWatcher(originalContent);
+        this.setupTopPanels(originalContent);
     }
 
-    // Поле ввода меняет высоту (многострочный текст, панель эмодзи,
-    // карусель значков) — пересчитываем минимальную высоту оригинального
-    // чата, чтобы кнопки ввода не уходили за границы экрана
+    // Twitch top panels (leaderboard, pinned message, hype train, polls) are shown
+    // above the filtered chat and stay available even when the original chat is
+    // hidden. They cannot be moved elsewhere in the DOM (React breaks), so they
+    // are pinned (position: fixed) to the top of our container and the filtered
+    // chat is pushed down by their height
+    setupTopPanels(originalContent) {
+        const schedule = () => {
+            if (this.topPanelsFrame) return;
+            this.topPanelsFrame = requestAnimationFrame(() => {
+                this.topPanelsFrame = null;
+                this.layoutTopPanels(originalContent);
+            });
+        };
+
+        // Panels can be at any depth. Mutations inside the message list (every new
+        // message) are skipped
+        this.topPanelsMutation = new MutationObserver(mutations => {
+            if (mutations.some(m => !m.target.closest?.('[role="log"], .chat-scrollable-area__message-container'))) {
+                schedule();
+            }
+        });
+        this.topPanelsMutation.observe(originalContent, { childList: true, subtree: true });
+
+        // Size of the panels and the container, the window, page scrolling
+        this.topPanelsResize = new ResizeObserver(schedule);
+        this.topPanelsResize.observe(this.dualContainer);
+        this.topPanelsWindowHandler = schedule;
+        window.addEventListener('resize', schedule);
+        window.addEventListener('scroll', schedule, { capture: true, passive: true });
+
+        schedule();
+    }
+
+    // Panels above the message list:
+    // 1) children of .chat-room__content before the message list: the Twitch top
+    //    area (leaderboard, slot for pinned messages and Drops). Found by position:
+    //    wrapper classes are hashed, and the leaderboard in ticker mode has no
+    //    recognizable class at all;
+    // 2) pinned messages and hype train rendered deeper by Twitch: found by the
+    //    classes of their inner elements, going up to the outermost wrapper that
+    //    does not contain the chat yet
+    findTopPanels(originalContent) {
+        // The chat itself: message list, input, messages, viewer card
+        const chatParts = '[role="log"], [data-a-target="chat-scroller"], ' +
+            '.chat-scrollable-area__message-container, .chat-input, .chat-room__viewer-card, ' +
+            '.chat-line__message, [data-a-target="chat-line-message"]';
+        const panels = new Set();
+
+        const content = originalContent.querySelector('.chat-room__content');
+        if (content) {
+            for (const child of content.children) {
+                if (child.matches(`[class*="chat-list"], ${chatParts}`) || child.querySelector(chatParts)) break;
+                if (!child.matches('.chat-room__notifications')) panels.add(child);
+            }
+        }
+
+        const selector = [
+            '[class*="channel-leaderboard"]',
+            '[class*="community-highlight"]',
+            '[data-test-selector*="community-highlight"]',
+            '[class*="pinned-chat" i]',
+            '[class*="hype-train"]'
+        ].join(', ');
+        originalContent.querySelectorAll(selector).forEach(match => {
+            if (match.closest(chatParts)) return;
+
+            let panel = match;
+            while (panel.parentElement && panel.parentElement !== originalContent &&
+                !panel.parentElement.querySelector(chatParts)) {
+                panel = panel.parentElement;
+            }
+            if (!panel.querySelector(chatParts)) panels.add(panel);
+        });
+
+        // Twitch notifications (subscription, tips): the queue above the input. In a
+        // small original chat they would cover the messages
+        originalContent.querySelectorAll('[data-test-selector="chat-private-callout-queue__callout-container"]')
+            .forEach(callout => panels.add(callout));
+
+        return [...panels];
+    }
+
+    // Height of a block including absolutely positioned content: the pinned
+    // message slot has zero height itself, while the card inside is absolute
+    measurePanel(panel) {
+        const box = panel.getBoundingClientRect();
+        let bottom = box.bottom;
+        panel.querySelectorAll('*').forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width && rect.height && rect.bottom > bottom) bottom = rect.bottom;
+        });
+        return bottom - box.top;
+    }
+
+    layoutTopPanels(originalContent) {
+        if (!this.dualContainer || !this.dualContainer.isConnected) return;
+
+        const panels = this.findTopPanels(originalContent);
+
+        // Panels that disappeared
+        this.topPanels.forEach(panel => {
+            if (!panels.includes(panel)) this.releaseTopPanel(panel);
+        });
+
+        const box = this.dualContainer.getBoundingClientRect();
+        let offset = 0;
+
+        panels.forEach(panel => {
+            const lifted = this.topPanels.has(panel);
+
+            // Guard against a misdetected panel: a block that is too tall is not a panel,
+            // and all panels together take at most half of the column. Otherwise the
+            // filtered chat would be pushed off screen. While the block is not pinned yet,
+            // this is its normal height in the original chat
+            const naturalHeight = this.measurePanel(panel);
+            if (naturalHeight > box.height / 3 || offset + naturalHeight > box.height / 2) {
+                if (lifted) this.releaseTopPanel(panel);
+                return;
+            }
+            // Leave an empty block alone (e.g. the pinned slot with nothing pinned): the
+            // layout is recalculated when something appears in it
+            if (!lifted && naturalHeight === 0) return;
+
+            if (!lifted) {
+                this.topPanels.add(panel);
+                panel.classList.add('twitch-filter-top-panel');
+                panel.style.top = '0px';
+                panel.style.left = '0px';
+                this.topPanelsResize.observe(panel);
+            }
+            setStyle(panel, 'width', `${box.width}px`);
+
+            // position: fixed is relative to the window, but to an ancestor with a
+            // transform if there is one, so compare the actual position and shift by the
+            // difference
+            const rect = panel.getBoundingClientRect();
+            const top = parseFloat(panel.style.top) + (box.top + offset - rect.top);
+            const left = parseFloat(panel.style.left) + (box.left - rect.left);
+            setStyle(panel, 'top', `${Math.round(top)}px`);
+            setStyle(panel, 'left', `${Math.round(left)}px`);
+
+            offset += this.measurePanel(panel);
+        });
+
+        setStyle(this.customChatContainer, 'marginTop', offset ? `${Math.round(offset) + 4}px` : '');
+
+        // Write only on change: fewer needless repaints
+        function setStyle(el, prop, value) {
+            if (el.style[prop] !== value) el.style[prop] = value;
+        }
+    }
+
+    releaseTopPanel(panel) {
+        this.topPanels.delete(panel);
+        panel.classList.remove('twitch-filter-top-panel');
+        ['top', 'left', 'width'].forEach(prop => {
+            panel.style[prop] = '';
+        });
+        if (this.topPanelsResize) this.topPanelsResize.unobserve(panel);
+    }
+
+    // Restore the panels (on navigation and when the chat is recreated)
+    stopTopPanels() {
+        if (this.topPanelsFrame) cancelAnimationFrame(this.topPanelsFrame);
+        this.topPanelsFrame = null;
+        if (this.topPanelsMutation) this.topPanelsMutation.disconnect();
+        if (this.topPanelsResize) this.topPanelsResize.disconnect();
+        if (this.topPanelsWindowHandler) {
+            window.removeEventListener('resize', this.topPanelsWindowHandler);
+            window.removeEventListener('scroll', this.topPanelsWindowHandler, { capture: true });
+        }
+        this.topPanels.forEach(panel => this.releaseTopPanel(panel));
+        this.topPanelsMutation = null;
+        this.topPanelsResize = null;
+        this.topPanelsWindowHandler = null;
+    }
+
+    // The input changes height (multi-line text, emote panel, badge carousel):
+    // recalculate the minimum height of the original chat so the input buttons
+    // never leave the screen
     setupInputWatcher(originalContent) {
         let attempts = 0;
 
@@ -484,7 +639,7 @@ class TwitchChatFilter {
                 return;
             }
 
-            // Поле ввода может отрисоваться позже
+            // The input may be rendered later
             if (++attempts < 15 && originalContent.isConnected) {
                 setTimeout(tryObserve, 2000);
             }
@@ -493,16 +648,16 @@ class TwitchChatFilter {
         tryObserve();
     }
 
-    // Пропорции чатов задаются через flex-grow — при скрытии одного
-    // из чатов CSS-правила с !important перекрывают инлайн-стили
+    // Chat proportions are set via flex-grow; when one chat is hidden, CSS rules
+    // with !important override the inline styles
     applySplitRatio() {
         if (!this.customChatContainer || !this.originalChatContainer) return;
 
         this.customChatContainer.style.flex = `${this.splitRatio} 1 0%`;
         this.originalChatContainer.style.flex = `${1 - this.splitRatio} 1 0%`;
 
-        // Оригинальный чат не может стать ниже, чем заголовок + поле ввода:
-        // поле ввода сообщения должно оставаться видимым всегда
+        // The original chat cannot be shorter than its header + input: the message
+        // input must always stay visible
         this.originalChatContainer.style.minHeight = `${this.getMinOriginalHeight()}px`;
     }
 
@@ -512,7 +667,7 @@ class TwitchChatFilter {
         const headerHeight = header ? header.offsetHeight : 30;
         const inputHeight = input ? input.offsetHeight : 0;
 
-        // + минимальная высота списка сообщений
+        // + minimum height of the message list
         return headerHeight + inputHeight + 60;
     }
 
@@ -520,8 +675,8 @@ class TwitchChatFilter {
         chrome.storage.local.set({ chatSplitRatio: this.splitRatio }).catch(() => { });
     }
 
-    // Перетаскивание разделителя меняет пропорции чатов,
-    // двойной клик возвращает 50/50
+    // Dragging the divider changes the chat proportions, double click resets to
+    // 50/50
     setupResizer(resizer) {
         resizer.addEventListener('dblclick', () => {
             this.splitRatio = 0.5;
@@ -556,8 +711,8 @@ class TwitchChatFilter {
                 this.saveSplitRatio();
             };
 
-            // Захват указателя: движение отслеживается, даже когда курсор
-            // уходит с разделителя (и работает на сенсорных экранах)
+            // Pointer capture: movement is tracked even when the cursor leaves the divider
+            // (and works on touch screens)
             resizer.setPointerCapture(e.pointerId);
             this.dualContainer.classList.add('resizing');
             resizer.addEventListener('pointermove', onMove);
@@ -566,9 +721,8 @@ class TwitchChatFilter {
         });
     }
 
-    // Скрытие через CSS-класс на контейнере: у оригинального чата прячется
-    // только список сообщений (поле ввода остаётся), стили переживают
-    // ре-рендеры Twitch
+    // Hiding uses a CSS class on the container: the original chat hides only its
+    // message list (the input stays), and the styles survive Twitch re-renders
     setupToggleButtons() {
         const bind = (button, className) => {
             button.addEventListener('click', () => {
@@ -588,10 +742,10 @@ class TwitchChatFilter {
         this.customChatContainer.querySelector('.twitch-popout-filtered')
             .addEventListener('click', () => this.openFilteredPopout());
 
-        // Оригинальный чат выносится штатным popout Twitch; на страницах
-        // без канала (например, VOD) он недоступен
+        // The original chat uses the native Twitch popout; it is unavailable on pages
+        // without a channel (e.g. VOD)
         const originalBtn = this.originalChatContainer.querySelector('.twitch-popout-original');
-        const channel = this.getChannelName();
+        const channel = FilterStore.channelFromUrl(location.href);
         if (!channel) {
             originalBtn.hidden = true;
             return;
@@ -606,24 +760,8 @@ class TwitchChatFilter {
         });
     }
 
-    getChannelName() {
-        const segments = window.location.pathname.split('/').filter(Boolean);
-        const reserved = [
-            'videos', 'directory', 'downloads', 'settings', 'wallet',
-            'subscriptions', 'inventory', 'drops', 'popout', 'moderator', 'u'
-        ];
-
-        if (segments.length >= 1 && !reserved.includes(segments[0].toLowerCase())) {
-            return segments[0];
-        }
-        if (segments[0] === 'moderator' && segments[1]) {
-            return segments[1];
-        }
-        return null;
-    }
-
-    // Стили расширения для отдельного окна (в него не внедряется
-    // styles.css из content_scripts). Загружаются один раз
+    // Extension styles for the separate window (styles.css from content_scripts is
+    // not injected there). Loaded once
     getExtensionCss() {
         if (!this.extensionCssPromise) {
             this.extensionCssPromise = fetch(chrome.runtime.getURL('styles.css'))
@@ -639,8 +777,8 @@ class TwitchChatFilter {
         return win.document.querySelector('.twitch-filter-messages');
     }
 
-    // Фильтрованный чат в отдельном окне: рисуем свой документ
-    // и дублируем туда каждое новое сообщение
+    // Filtered chat in a separate window: render our own document and copy every
+    // new message there
     openFilteredPopout() {
         if (this.popoutWindow && !this.popoutWindow.closed) {
             this.popoutWindow.focus();
@@ -654,16 +792,16 @@ class TwitchChatFilter {
         this.popoutRulesCount = null;
         const doc = win.document;
 
-        // Относительные адреса в стилях Twitch (шрифты и т.п.)
+        // Relative URLs in the Twitch styles (fonts etc.)
         const base = doc.createElement('base');
         base.href = location.origin;
         doc.head.appendChild(base);
 
-        // Тема Twitch (CSS-переменные цветов) задаётся классами
+        // The Twitch theme (CSS color variables) is set by classes
         doc.documentElement.className = document.documentElement.className;
         this.syncPopoutStyles();
 
-        // Собственные стили — последними, чтобы перекрывать стили Twitch
+        // Our own styles go last to override the Twitch styles
         const style = doc.createElement('style');
         doc.head.appendChild(style);
         this.getExtensionCss().then(css => {
@@ -678,12 +816,12 @@ class TwitchChatFilter {
         this.setupMessageInteractions(list);
         this.updateInterfaceTexts();
 
-        // Переносим уже накопленные сообщения
+        // Copy the messages collected so far
         this.filteredMessages.forEach(msg => this.appendMessageToPopout(msg));
         list.scrollTop = list.scrollHeight;
 
-        // Отслеживаем закрытие окна; Twitch добавляет стили по мере
-        // появления новых элементов — досылаем их в окно
+        // Watch for the window being closed; Twitch adds styles as new elements
+        // appear, so send them to the window too
         clearInterval(this.popoutCheckTimer);
         this.popoutCheckTimer = setInterval(() => {
             if (!this.popoutWindow || this.popoutWindow.closed) {
@@ -696,9 +834,9 @@ class TwitchChatFilter {
         }, 1000);
     }
 
-    // Копируем стили страницы Twitch в отдельное окно. Styled-components
-    // добавляют правила через CSSOM, поэтому содержимое <style> пустое —
-    // берём правила из cssRules
+    // Copy the Twitch page styles into the separate window. Styled-components add
+    // rules through the CSSOM, so <style> contents are empty; take the rules from
+    // cssRules
     syncPopoutStyles() {
         const win = this.popoutWindow;
         if (!win || win.closed) return;
@@ -709,7 +847,7 @@ class TwitchChatFilter {
             try {
                 rulesCount += sheet.cssRules.length;
             } catch (error) {
-                // Чужой домен — правила недоступны
+                // Cross-origin sheet: rules are not accessible
             }
         });
         if (rulesCount === this.popoutRulesCount) return;
@@ -734,7 +872,7 @@ class TwitchChatFilter {
             fragment.appendChild(el);
         });
 
-        // Стили страницы — первыми, чтобы собственные стили окна их перекрывали
+        // Page styles first so the window's own styles override them
         const base = win.document.head.querySelector('base');
         win.document.head.insertBefore(fragment, base ? base.nextSibling : win.document.head.firstChild);
     }
@@ -749,13 +887,13 @@ class TwitchChatFilter {
             this.observer.disconnect();
         }
 
-        // Twitch может не добавлять новые <li>, а переиспользовать
-        // существующие, меняя их содержимое (VOD-чат при перемотке и сдвиге
-        // списка) — поэтому реагируем на любые изменения внутри чата.
-        // Повторы отсекаются в processMessage по сигнатуре сообщения
+        // Twitch may reuse existing <li> elements instead of adding new ones, changing
+        // their content (VOD chat on seeking and list shifts), so react to any change
+        // inside the chat. Repeats are dropped in processMessage by the message
+        // signature
         this.observer = new MutationObserver(() => {
             if (!this.processTimer) {
-                // Один отложенный проход вместо таймера на каждую мутацию
+                // One deferred pass instead of a timer per mutation
                 this.processTimer = setTimeout(() => {
                     this.processTimer = null;
                     this.processNewMessages();
@@ -780,7 +918,7 @@ class TwitchChatFilter {
 
         this.messagesContainer.textContent = '';
 
-        // Окно popout тоже пересобираем
+        // Rebuild the popout window as well
         const popoutList = this.getPopoutList();
         if (popoutList) popoutList.textContent = '';
 
@@ -804,16 +942,16 @@ class TwitchChatFilter {
         const username = this.extractUsername(messageElement);
         const messageText = this.extractMessageText(messageElement);
 
-        // Сообщение ещё не отрисовано до конца — вернёмся к нему
-        // при следующей мутации, не помечая как обработанное
+        // The message is not fully rendered yet: come back to it on the next mutation
+        // without marking it as processed
         if (!username || !messageText) return;
 
-        // Для сравнения со списком используем логин (data-a-user) —
-        // он всегда латиницей в нижнем регистре, в отличие от отображаемого имени
+        // Compare by login (data-a-user): it is always lowercase Latin, unlike the
+        // display name
         const login = this.extractLogin(messageElement) || username;
 
-        // Дедупликация по содержимому элемента, а не по самому элементу:
-        // Twitch может переиспользовать <li> под новое сообщение
+        // Deduplicate by the element content rather than the element itself: Twitch
+        // may reuse an <li> for a new message
         const vodTime = this.extractVodTimestamp(messageElement);
         const signature = `${vodTime || ''}|${login}|${messageText}`;
         if (this.processedElements.get(messageElement) === signature) {
@@ -821,8 +959,13 @@ class TwitchChatFilter {
         }
         this.processedElements.set(messageElement, signature);
 
-        // В VOD у сообщения есть время в видео — по нему отсекаем
-        // сообщения, которые просто сдвинулись в соседний элемент
+        // Arrival time: keep the previous one when processing again (settings change)
+        const known = this.messageTimes.get(messageElement);
+        const receivedAt = known && known.signature === signature ? known.time : Date.now();
+        this.messageTimes.set(messageElement, { signature, time: receivedAt });
+
+        // In a VOD a message has its time in the video: use it to drop messages that
+        // just moved to a neighboring element
         if (vodTime) {
             if (this.seenVodMessages.has(signature)) return;
             this.seenVodMessages.add(signature);
@@ -831,16 +974,13 @@ class TwitchChatFilter {
             }
         }
 
-        const shouldShow = this.shouldShowMessage(login);
-
-        if (shouldShow) {
+        if (this.shouldShowMessage(login, messageElement, messageText)) {
             const messageData = {
-                username: username,
-                text: messageText,
-                timestamp: this.extractTimestamp(messageElement),
+                // Time in the video (VOD), used to seek on click
+                timestamp: vodTime,
+                receivedAt: receivedAt,
                 hasOwnTimestamp: Boolean(vodTime),
-                // Копия оригинального сообщения со всеми значками, смайлами,
-                // цветом ника и т.д.
+                // Copy of the original message with all badges, emotes, name color etc.
                 node: this.createMessageClone(messageElement),
                 original: messageElement,
                 signature: signature
@@ -853,72 +993,94 @@ class TwitchChatFilter {
 
             this.appendMessageToChat(messageData);
             this.appendMessageToPopout(messageData);
-
-            if (this.mode === 'whitelist' && this.usersSet.has(login.toLowerCase())) {
-                this.saveWhitelistMessage(username, messageText);
-            }
-        } else {
-            this.hiddenMessagesCount++;
-            this.scheduleStatsWrite();
         }
     }
 
-    // Копия сообщения Twitch: внешний вид (значки, смайлы, стикеры,
-    // упоминания, цвет ника) берётся из стилей самого Twitch
+    // Copy of a Twitch message: its look (badges, emotes, stickers, mentions, name
+    // color) comes from the Twitch styles
     createMessageClone(messageElement) {
         const clone = messageElement.cloneNode(true);
         clone.classList.add('twitch-filter-clone');
 
-        // Часть стилей Twitch задаёт через родительский список (шрифт,
-        // межстрочный интервал, отступы) — вне его копия была бы выше
-        // оригинала. Переносим вычисленные значения прямо на копию
+        // Twitch sets some styles through the parent list (font, line height,
+        // paddings): outside of it the copy would be taller than the original. Copy
+        // the computed values onto the clone
         const computed = window.getComputedStyle(messageElement);
         ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing',
             'margin', 'padding', 'color'].forEach(prop => {
             clone.style[prop] = computed[prop];
         });
-        // <li> вне <ul> получил бы маркер списка
+        // An <li> outside a <ul> would get a list marker
         clone.style.display = computed.display === 'list-item' ? 'block' : computed.display;
         clone.style.listStyle = 'none';
 
-        // id должны оставаться уникальными в документе
+        // ids must stay unique in the document
         clone.removeAttribute('id');
         clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
 
         return clone;
     }
 
-    // Обёртка с копией сообщения для указанного документа
-    // (основная страница или отдельное окно)
+    // Wrapper with a message copy for the given document (main page or separate
+    // window)
     renderMessage(msgData, doc) {
         const messageDiv = doc.createElement('div');
         messageDiv.className = 'twitch-filter-message';
 
-        // В live чате времени у сообщения нет — добавляем своё
-        if (!msgData.hasOwnTimestamp) {
+        const clone = doc.importNode(msgData.node, true);
+
+        // Live chat messages have no time: add our own (unless it is turned off or
+        // Twitch shows its own). The full date and time are in the tooltip
+        const format = this.state ? this.state.timestampFormat : 'short';
+        if (format !== 'off' && !msgData.hasOwnTimestamp && !clone.querySelector('.chat-line__timestamp')) {
             const timestampSpan = doc.createElement('span');
             timestampSpan.className = 'twitch-filter-timestamp';
-            timestampSpan.textContent = msgData.timestamp;
-            messageDiv.appendChild(timestampSpan);
+            timestampSpan.textContent = FilterStore.formatTime(msgData.receivedAt, format);
+            timestampSpan.title = new Date(msgData.receivedAt).toLocaleString(this.currentLanguage);
+            this.insertTimestamp(clone, timestampSpan);
         }
 
-        messageDiv.appendChild(doc.importNode(msgData.node, true));
+        messageDiv.appendChild(clone);
         this.renderedMessages.set(messageDiv, msgData);
         return messageDiv;
+    }
+
+    // The time goes into the message line before the badges and name, like Twitch
+    // does with timestamps enabled. If the line is not found, at the start of the
+    // copy
+    insertTimestamp(clone, timestampSpan) {
+        const name = clone.querySelector('.chat-line__username-container, [data-a-target="chat-message-username"]');
+        if (!name) {
+            clone.prepend(timestampSpan);
+            return;
+        }
+
+        const badge = clone.querySelector('.chat-badge, [data-a-target="chat-badge"]');
+        const first = badge && (badge.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING)
+            ? badge
+            : name;
+
+        // Common container of the badges and the name; the time goes before its badge
+        // block
+        let container = first.parentElement;
+        while (container !== clone && !container.contains(name)) container = container.parentElement;
+        let before = first;
+        while (before.parentElement !== container) before = before.parentElement;
+        container.insertBefore(timestampSpan, before);
     }
 
     appendMessageToChat(msgData) {
         if (this.messagesContainer) this.appendRendered(this.messagesContainer, msgData);
     }
 
-    // Добавление сообщения в список (основной чат или отдельное окно)
-    // с прокруткой вниз, если пользователь не листает историю
+    // Append a message to a list (main chat or separate window) and scroll down
+    // unless the user is reading history
     appendRendered(list, msgData) {
         const wasNearBottom = this.isNearBottom(list);
 
         list.appendChild(this.renderMessage(msgData, list.ownerDocument));
 
-        // Ограничиваем количество DOM-элементов
+        // Limit the number of DOM elements
         while (list.children.length > this.maxDisplayedMessages) {
             list.firstChild.remove();
         }
@@ -928,9 +1090,9 @@ class TwitchChatFilter {
         }
     }
 
-    // Клики по копии (ник, значок, смайл, упоминание, время в VOD)
-    // передаём соответствующему элементу оригинального сообщения —
-    // так работают карточка пользователя, карточка смайла, меню и перемотка
+    // Clicks on the copy (name, badge, emote, mention, VOD time) are passed to the
+    // matching element of the original message, so the user card, emote card, menu
+    // and seeking work
     setupMessageInteractions(container) {
         container.addEventListener('click', (e) => {
             const wrapper = e.target.closest('.twitch-filter-message');
@@ -951,7 +1113,7 @@ class TwitchChatFilter {
             }
             this.suppressClickOn = null;
 
-            // Таймкод VOD: перематываем видео, даже если оригинала уже нет
+            // VOD timestamp: seek the video even if the original is gone
             const isTimestamp = msgData.hasOwnTimestamp &&
                 interactive.closest('.vod-message__header, [data-test-selector="chat-timestamp"]');
 
@@ -959,15 +1121,15 @@ class TwitchChatFilter {
             const cloneRoot = wrapper.querySelector('.twitch-filter-clone');
             const target = original && this.findCounterpart(cloneRoot, interactive, original);
 
-            // Оригинал уже удалён из чата — обычные ссылки работают сами
+            // The original was removed from the chat: plain links work on their own
             if (!target && !isTimestamp) return;
 
             e.preventDefault();
             e.stopPropagation();
 
             if (target) {
-                // Меню («⋮» справа от сообщения) Twitch открывает внутри
-                // оригинального сообщения — его не видно, показываем копию
+                // Twitch opens the menu ("⋮" to the right of the message) inside the original
+                // message, which is not visible, so show a copy
                 if (!isTimestamp) this.watchOriginalPopup(original, target, interactive);
                 target.click();
             }
@@ -977,8 +1139,8 @@ class TwitchChatFilter {
         this.setupHoverCard(container);
     }
 
-    // Ждём появления всплывающего меню внутри оригинального сообщения
-    // (наблюдатель ставится до клика: React отрисовывает меню синхронно)
+    // Wait for the popup menu inside the original message (the observer is set
+    // before the click: React renders the menu synchronously)
     watchOriginalPopup(original, originalToggle, cloneAnchor) {
         this.closeProxyMenu();
 
@@ -999,7 +1161,7 @@ class TwitchChatFilter {
         const timer = setTimeout(() => observer.disconnect(), 1000);
     }
 
-    // Пункты меню: самые внешние кликабельные элементы с подписью
+    // Menu items: the outermost clickable elements with a label
     getPopupItems(popup) {
         const candidates = Array.from(popup.querySelectorAll('[role="menuitem"], button, a[href]'));
         if (popup.matches('[role="menuitem"], button, a[href]')) candidates.unshift(popup);
@@ -1013,8 +1175,8 @@ class TwitchChatFilter {
             .filter(item => item.label);
     }
 
-    // Копия меню рядом с кнопкой в фильтрованном чате; оригинальное меню
-    // остаётся открытым, но невидимым — клики по пунктам передаются ему
+    // A copy of the menu next to the button in the filtered chat; the original
+    // menu stays open but invisible, and clicks on items are passed to it
     showProxyMenu(popup, originalToggle, cloneAnchor) {
         this.closeProxyMenu(false);
 
@@ -1031,7 +1193,7 @@ class TwitchChatFilter {
                 const labelsBefore = items.map(item => item.label).join('\n');
                 element.click();
 
-                // Пункт мог открыть следующий шаг (подменю, подтверждение)
+                // The item may have opened the next step (submenu, confirmation)
                 setTimeout(() => {
                     const labelsAfter = popup.isConnected
                         ? this.getPopupItems(popup).map(item => item.label).join('\n')
@@ -1046,7 +1208,7 @@ class TwitchChatFilter {
             menu.appendChild(btn);
         });
 
-        // Обработчики Twitch «клик вне меню» не должны закрыть оригинал
+        // Twitch "click outside the menu" handlers must not close the original
         ['mousedown', 'pointerdown', 'mouseup', 'pointerup'].forEach(type => {
             menu.addEventListener(type, e => e.stopPropagation());
         });
@@ -1055,7 +1217,7 @@ class TwitchChatFilter {
         popup.style.visibility = 'hidden';
         doc.body.appendChild(menu);
 
-        // Позиция: под кнопкой, по правому краю; не выходим за окно
+        // Position: below the button, right-aligned, within the window
         const view = doc.defaultView;
         const anchorRect = cloneAnchor.getBoundingClientRect();
         const menuRect = menu.getBoundingClientRect();
@@ -1069,7 +1231,7 @@ class TwitchChatFilter {
 
         const onOutside = (e) => {
             if (menu.contains(e.target)) return;
-            // Повторный клик по той же кнопке «⋮» только закрывает меню
+            // Clicking the same "⋮" button again only closes the menu
             if (cloneAnchor.contains(e.target)) this.suppressClickOn = cloneAnchor;
             this.closeProxyMenu();
         };
@@ -1082,7 +1244,7 @@ class TwitchChatFilter {
         doc.addEventListener('mousedown', onOutside, true);
         doc.addEventListener('keydown', onKey, true);
         doc.addEventListener('scroll', onScroll, true);
-        // Twitch сам закрыл меню (или сообщение ушло из чата)
+        // Twitch closed the menu itself (or the message left the chat)
         const aliveTimer = setInterval(() => {
             if (!popup.isConnected) this.closeProxyMenu(false);
         }, 500);
@@ -1101,7 +1263,7 @@ class TwitchChatFilter {
         };
     }
 
-    // closeOriginal: закрыть и оригинальное меню повторным кликом по кнопке
+    // closeOriginal: also close the original menu by clicking its button again
     closeProxyMenu(closeOriginal = true) {
         const proxy = this.proxyMenu;
         if (!proxy) return;
@@ -1114,9 +1276,8 @@ class TwitchChatFilter {
         proxy.cleanup();
     }
 
-    // Перемотка VOD к времени сообщения («1:02:03» или «2:03»). Сначала
-    // даём сработать обработчику Twitch; если видео не перемоталось —
-    // перематываем сами через элемент <video>
+    // Seek a VOD to the message time ("1:02:03" or "2:03"). Let the Twitch handler
+    // run first; if the video did not seek, seek via the <video> element
     ensureSeek(timestamp, immediately) {
         const parts = String(timestamp).split(':').map(Number);
         if (!parts.length || parts.some(n => Number.isNaN(n))) return;
@@ -1136,19 +1297,22 @@ class TwitchChatFilter {
         }
     }
 
-    // Оригинал сообщения, если он ещё в чате и не переиспользован
-    // Twitch под другое сообщение
+    // The original message, if it is still in the chat and not reused by Twitch
+    // for another message
     getLiveOriginal(msgData) {
         const original = msgData.original;
         if (!original || !original.isConnected) return null;
         return this.processedElements.get(original) === msgData.signature ? original : null;
     }
 
-    // Элемент оригинала, стоящий на том же месте, что и node в копии
+    // The element of the original at the same place as node in the copy
     findCounterpart(cloneRoot, node, original) {
         const path = [];
         for (let el = node; el && el !== cloneRoot; el = el.parentElement) {
-            path.unshift(Array.prototype.indexOf.call(el.parentElement.children, el));
+            // Our time element exists in the copy but not in the original: skip it
+            const siblings = Array.prototype.filter.call(el.parentElement.children,
+                child => !child.classList.contains('twitch-filter-timestamp'));
+            path.unshift(siblings.indexOf(el));
         }
 
         let target = original;
@@ -1159,11 +1323,11 @@ class TwitchChatFilter {
         return target.tagName === node.tagName ? target : null;
     }
 
-    // Подсказка при наведении на значки и смайлы: увеличенная картинка
-    // и название (родные подсказки Twitch на копии не работают)
+    // Tooltip for badges and emotes on hover: larger image and name (native Twitch
+    // tooltips do not work on the copy)
     setupHoverCard(container) {
         const doc = container.ownerDocument;
-        // Чат пересоздаётся при навигации — карточка в документе одна
+        // The chat is recreated on navigation: keep a single card per document
         doc.querySelector('.twitch-filter-hovercard')?.remove();
         const card = doc.createElement('div');
         card.className = 'twitch-filter-hovercard';
@@ -1232,13 +1396,13 @@ class TwitchChatFilter {
         if (!this.chatContainer) return [];
 
         const messages = new Set([
-            // Live чат: сообщения — div.chat-line__message
+            // Live chat: messages are div.chat-line__message
             ...this.chatContainer.querySelectorAll(
                 '.chat-line__message, [data-a-target="chat-line-message"], [data-test-selector="chat-line-message"]'
             ),
-            // VOD: сообщения — li с .vod-message внутри
+            // VOD: messages are li elements with .vod-message inside
             ...Array.from(this.chatContainer.querySelectorAll('li .vod-message'), el => el.closest('li')),
-            // Запасной вариант: поднимаемся от ника к корню сообщения
+            // Fallback: go up from the name to the message root
             ...Array.from(
                 this.chatContainer.querySelectorAll('[data-a-target="chat-message-username"]'),
                 el => el.closest('.chat-line__message, li')
@@ -1249,26 +1413,56 @@ class TwitchChatFilter {
         return [...messages];
     }
 
-    shouldShowMessage(username) {
-        const name = username.toLowerCase();
+    // A message is shown if it matches at least one "show" rule and no "hide" rule
+    shouldShowMessage(login, messageElement, text) {
+        const name = login.toLowerCase();
 
-        // Собственные сообщения пользователя показываем всегда
+        // The user's own messages are always shown
         const ownLogin = this.getOwnLogin();
         if (ownLogin && name === ownLogin) return true;
 
-        // При выключенном фильтре показываем всё
+        // With the filter off everything is shown
         if (!this.isFilterEnabled) return true;
 
-        const isInList = this.usersSet.has(name);
-
-        if (this.mode === 'whitelist') {
-            return isInList;
-        } else {
-            return !isInList;
-        }
+        const message = { login: name, text: text.toLowerCase(), element: messageElement, badges: null };
+        if (this.excludeRules.some(rule => this.ruleMatches(rule, message))) return false;
+        return this.includeRules.some(rule => this.ruleMatches(rule, message));
     }
 
-    // Логин текущего пользователя из cookie Twitch
+    ruleMatches(rule, message) {
+        switch (rule.type) {
+            case 'user':
+                return message.login === rule.match;
+            case 'keyword':
+                return message.text.includes(rule.match);
+            case 'role': {
+                const def = ROLE_BADGES[rule.value];
+                if (def.logins && def.logins.includes(message.login)) return true;
+                return this.getBadges(message).some(badge =>
+                    def.ids.some(id => badge.src.includes(id)) || def.names.test(badge.name));
+            }
+            case 'badge':
+                return this.getBadges(message).some(badge => badge.name.toLowerCase().includes(rule.match));
+        }
+        return false;
+    }
+
+    // Badges of the message author: image URL and name. Parsed once per message
+    // and only when there are badge rules
+    getBadges(message) {
+        if (!message.badges) {
+            message.badges = Array.from(
+                message.element.querySelectorAll('.chat-badge, [data-a-target="chat-badge"] img, img[src*="/badges/"]'),
+                badge => ({
+                    src: badge.getAttribute('src') || '',
+                    name: badge.getAttribute('alt') || badge.getAttribute('aria-label') || ''
+                })
+            );
+        }
+        return message.badges;
+    }
+
+    // Login of the current user from the Twitch cookie
     getOwnLogin() {
         if (this.ownLogin) return this.ownLogin;
 
@@ -1279,8 +1473,8 @@ class TwitchChatFilter {
         return this.ownLogin;
     }
 
-    // Логин пользователя из data-a-user (на корне сообщения в live чате
-    // или на элементе с ником)
+    // User login from data-a-user (on the message root in live chat or on the name
+    // element)
     extractLogin(messageElement) {
         if (messageElement.getAttribute) {
             const rootLogin = messageElement.getAttribute('data-a-user');
@@ -1291,8 +1485,7 @@ class TwitchChatFilter {
         return userElement ? userElement.getAttribute('data-a-user') : null;
     }
 
-    // Twitch показывает локализованные ники как «Имя (login)» —
-    // для сравнения со списком нужен именно login
+    // Twitch shows localized names as "Name (login)"; the login is what we compare
     normalizeUsername(username) {
         const match = username.match(/^.+\s\((\w+)\)$/);
         return match ? match[1] : username;
@@ -1335,7 +1528,7 @@ class TwitchChatFilter {
                     return this.normalizeUsername(username);
                 }
             } catch (error) {
-                // Игнорируем ошибки
+                // Ignore errors
             }
         }
 
@@ -1343,8 +1536,8 @@ class TwitchChatFilter {
     }
 
     extractMessageText(messageElement) {
-        // Тело сообщения целиком: текст + названия смайлов, чтобы сообщения
-        // только из смайлов тоже проходили через фильтр
+        // The whole message body: text + emote names, so emote-only messages are
+        // filtered too
         const body = messageElement.querySelector(
             '[data-a-target="chat-line-message-body"], .video-chat__message'
         );
@@ -1358,7 +1551,7 @@ class TwitchChatFilter {
                     text += ` ${node.alt} `;
                 }
             }
-            // В VOD тело начинается с разделителя «:»
+            // In a VOD the body starts with the ":" separator
             text = text.replace(/\s+/g, ' ').trim().replace(/^:\s*/, '');
             if (text) return text;
         }
@@ -1380,78 +1573,20 @@ class TwitchChatFilter {
         return null;
     }
 
-    // Время сообщения в видео (есть только в VOD)
+    // Message time in the video (VOD only)
     extractVodTimestamp(messageElement) {
         const timeElement = messageElement.querySelector('[data-test-selector="chat-timestamp"]') ||
             messageElement.querySelector('.vod-message__header p');
         const text = timeElement ? timeElement.textContent.trim() : '';
         return text || null;
     }
-
-    extractTimestamp(messageElement) {
-        // Для live чата используем текущее время
-        return this.extractVodTimestamp(messageElement) || new Date().toLocaleTimeString();
-    }
-
-    // Сохранение whitelist-сообщений: буферизуем и пишем в storage.local
-    // пакетами, чтобы не упираться в лимиты записи
-    saveWhitelistMessage(username, text) {
-        this.pendingSavedMessages.push({
-            username: username,
-            text: text,
-            timestamp: Date.now()
-        });
-        this.savedMessagesCount++;
-
-        if (!this.saveTimer) {
-            this.saveTimer = setTimeout(() => {
-                this.saveTimer = null;
-                this.flushSavedMessages();
-            }, 2000);
-        }
-    }
-
-    async flushSavedMessages() {
-        if (this.pendingSavedMessages.length === 0) return;
-
-        const batch = this.pendingSavedMessages;
-        this.pendingSavedMessages = [];
-
-        try {
-            const result = await chrome.storage.local.get(['savedWhitelistMessages']);
-            let saved = result.savedWhitelistMessages || [];
-            saved = saved.concat(batch);
-
-            // Храним последние 1000 сообщений
-            if (saved.length > 1000) {
-                saved = saved.slice(-1000);
-            }
-
-            await chrome.storage.local.set({
-                savedWhitelistMessages: saved,
-                savedMessagesCount: this.savedMessagesCount
-            });
-        } catch (error) {
-            // Контекст расширения мог быть инвалидирован (обновление расширения)
-        }
-    }
-
-    // Отложенная запись статистики — не чаще раза в 2 секунды
-    scheduleStatsWrite() {
-        if (this.statsTimer) return;
-
-        this.statsTimer = setTimeout(() => {
-            this.statsTimer = null;
-            chrome.storage.local.set({
-                hiddenMessagesCount: this.hiddenMessagesCount,
-                savedMessagesCount: this.savedMessagesCount
-            }).catch(() => { });
-        }, 2000);
-    }
 }
 
-// Инициализация фильтра
-if (window.location.hostname.includes('twitch.tv')) {
+// Filter startup. The pop-out chat window (/popout/…/chat) and the embedded
+// chat (/embed/…) are not split in two: they are just a chat
+const isStandaloneChat = /^\/(popout|embed)\//i.test(window.location.pathname);
+
+if (window.location.hostname.includes('twitch.tv') && !isStandaloneChat) {
     const filter = new TwitchChatFilter();
 
     let currentUrl = window.location.href;
@@ -1459,14 +1594,16 @@ if (window.location.hostname.includes('twitch.tv')) {
         if (window.location.href !== currentUrl) {
             currentUrl = window.location.href;
             filter.cleanup();
+            // Another preset may apply on another channel
+            if (filter.state) filter.setState(filter.state);
             setTimeout(() => {
                 filter.waitForChat();
             }, 3000);
             return;
         }
 
-        // Самовосстановление: если Twitch перемонтировал чат и наш
-        // контейнер оторвался от документа — пересоздаем его
+        // Self-healing: if Twitch remounted the chat and our container got detached,
+        // recreate it
         if (filter.chatContainer && !filter.chatContainer.isConnected) {
             filter.cleanup();
             filter.waitForChat();
