@@ -1,11 +1,18 @@
 {
     "manifest_version": 3,
     "name": "Chat Filter for Twitch",
-    "version": "1.10",
+    "version": "1.12",
     "description": "A separate filtered Twitch chat built from your rules: users, roles, badges and keywords, with presets.",
     "permissions": [
-        "storage"
+        "storage",
+        "scripting"
     ],
+    "optional_permissions": [
+        "notifications"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "host_permissions": [
         "*://*.twitch.tv/*"
     ],

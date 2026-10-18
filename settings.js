@@ -2,13 +2,15 @@
 // Copyright (C) 2025-2026 Risher. Licensed under GPL-3.0-only, see LICENSE
 
 // Shared by the popup and the content script: roles, rules, presets and their
-// storage in chrome.storage.sync
+// storage in chrome.storage.sync. Top-level names are declared with var: after
+// an extension update background.js injects the scripts into open tabs again,
+// and a repeated const would be a "has already been declared" error
 
 // Roles are detected by the badges in a message: first by the global badge ID
 // in the image URL, then by its name (alt). Names are localized, so the
 // keywords are in English and Russian. logins: well-known logins (most bots
 // have no badge). color and icon (20×20) are for the popup UI
-const ROLE_BADGES = {
+var ROLE_BADGES = {
     broadcaster: {
         ids: ['5527c58c-fb7d-422d-b71b-f309dcb85cc1'],
         names: /broadcaster|стример|автор трансляции|вещатель/i,
@@ -64,43 +66,66 @@ const ROLE_BADGES = {
     }
 };
 
-// Rule: { id, type, value, action: include|exclude, enabled, note, updated }
+// Rule: { id, type, value, mode, action: include|exclude, enabled, note,
+//         updated, conditions, notify }
 //   role    — a key of ROLE_BADGES
 //   user    — author login
 //   badge   — part of any badge name
-//   keyword — part of the message text
+//   keyword — the message text, see KEYWORD_MODES
+// conditions: up to MAX_CONDITIONS more { type, value, mode } that must match
+// too (AND), e.g. "moderator" and "mentions me". notify: a sound / desktop
+// notification when a new message is shown by this rule
 // The order is the order of types in the UI
-const RULE_TYPES = ['role', 'user', 'badge', 'keyword'];
+var RULE_TYPES = ['role', 'user', 'badge', 'keyword'];
+
+// How a keyword is matched: a part of the text, a whole word, a regular
+// expression, or a mention of a user (value: login or MENTION_ME, the user
+// of the extension)
+var KEYWORD_MODES = ['contains', 'word', 'regex', 'mention'];
+var MENTION_ME = '@me';
+var MAX_CONDITIONS = 2;
 
 // Preset: { id, name, rules, channels }. channels: logins of the channels
 // where the preset turns on automatically. A channel is bound to at most one
 // preset; other channels use activePresetId
 
 // Twitch login: Latin letters, digits and underscore, up to 25 characters
-const LOGIN_PATTERN = /^[a-z0-9_]{1,25}$/;
+var LOGIN_PATTERN = /^[a-z0-9_]{1,25}$/;
 
 // twitch.tv sections that are not channels
-const RESERVED_PATHS = [
+var RESERVED_PATHS = [
     'videos', 'directory', 'downloads', 'settings', 'wallet', 'subscriptions',
     'inventory', 'drops', 'popout', 'moderator', 'u', 'search', 'turbo', 'prime', 'p', 'jobs'
 ];
 
-const EXPORT_FORMAT = 'twitch-chat-filter-preset';
+var EXPORT_FORMAT = 'twitch-chat-filter-preset';
 
 // Interface languages. A new language: a line here + translations in popup.js
 // (translations) and content.js (TRANSLATIONS). Settings store a language code
 // or 'system', the browser language (the default)
-const SYSTEM_LANGUAGE = 'system';
+var SYSTEM_LANGUAGE = 'system';
 
 // Message time in the filtered chat: short (11:23), with seconds (11:23:18) or
 // hidden
-const TIMESTAMP_FORMATS = ['short', 'full', 'off'];
-const LANGUAGES = [
+var TIMESTAMP_FORMATS = ['short', 'full', 'off'];
+
+// Settings that change only how the filtered chat looks: changing them does not
+// filter the messages again
+var VIEW_SETTINGS = ['language', 'autoCollapse', 'hideNames', 'notifySound', 'notifyDesktop', 'notifyScope', 'sendStatus'];
+
+// What to notify about: every new message of the filtered chat, or only the
+// messages of rules marked "notify"
+var NOTIFY_SCOPES = ['all', 'rules'];
+
+// Filtered chat history: messages per channel kept between page reloads
+var HISTORY_LIMIT = 1000;
+
+var LANGUAGES = [
     { code: 'en', name: 'English' },
     { code: 'ru', name: 'Русский' }
 ];
 
-const FilterStore = {
+var FilterStore = {
     // chrome.storage.sync limits a single key to 8 KB, so the rules of a preset
     // are stored in chunks: rules_<preset id>_<chunk number>
     CHUNK_BYTES: 7000,
@@ -169,37 +194,127 @@ const FilterStore = {
             this.getActivePreset(state);
     },
 
-    normalizeRule(raw) {
+    // A regular expression of a keyword rule: case-insensitive, Unicode. null if
+    // it is not valid
+    compileRegex(value) {
+        try {
+            return new RegExp(value, 'iu');
+        } catch (error) {
+            return null;
+        }
+    },
+
+    // What a rule (or one of its conditions) checks: { type, value, mode }, or
+    // null if it is not valid
+    normalizeCondition(raw) {
         if (!raw || !RULE_TYPES.includes(raw.type)) return null;
 
         let value = String(raw.value ?? '').trim().slice(0, 100);
+        const mode = raw.type === 'keyword' && KEYWORD_MODES.includes(raw.mode) ? raw.mode : 'contains';
         if (raw.type === 'user') value = value.toLowerCase();
         if (raw.type === 'role' && !(value in ROLE_BADGES)) return null;
+        if (mode === 'mention') {
+            // An empty mention is a mention of the user of the extension
+            value = !value || value.toLowerCase() === MENTION_ME ? MENTION_ME : this.normalizeLogin(value);
+            if (value !== MENTION_ME && !LOGIN_PATTERN.test(value)) return null;
+        }
+        if (mode === 'regex' && !this.compileRegex(value)) return null;
         if (!value) return null;
+
+        return { type: raw.type, value, mode };
+    },
+
+    normalizeRule(raw) {
+        const main = this.normalizeCondition(raw);
+        if (!main) return null;
+
+        // Extra conditions: valid ones, without repeats and without the rule itself
+        const keys = new Set([this.conditionKey(main)]);
+        const conditions = (Array.isArray(raw.conditions) ? raw.conditions : [])
+            .map(condition => this.normalizeCondition(condition))
+            .filter(condition => {
+                if (!condition || keys.has(this.conditionKey(condition))) return false;
+                keys.add(this.conditionKey(condition));
+                return true;
+            })
+            .slice(0, MAX_CONDITIONS);
 
         return {
             id: String(raw.id || this.createId()),
-            type: raw.type,
-            value: value,
+            ...main,
             action: raw.action === 'exclude' ? 'exclude' : 'include',
             enabled: raw.enabled !== false,
             note: String(raw.note || '').trim().slice(0, 60),
-            updated: Number(raw.updated) || Date.now()
+            updated: Number(raw.updated) || Date.now(),
+            conditions,
+            notify: raw.notify === true
         };
     },
 
-    // Identical rules (type + value) are not duplicated
+    conditionKey(condition) {
+        return `${condition.type}:${condition.mode || 'contains'}:${String(condition.value).toLowerCase()}`;
+    },
+
+    // Rules that check the same thing are duplicates (the order of the extra
+    // conditions does not matter)
+    ruleKey(rule) {
+        const extra = (rule.conditions || []).map(condition => this.conditionKey(condition)).sort();
+        return [this.conditionKey(rule), ...extra].join('&');
+    },
+
+    // Identical rules are not duplicated
     normalizeRules(rawRules) {
         const seen = new Set();
         return (Array.isArray(rawRules) ? rawRules : [])
             .map(rule => this.normalizeRule(rule))
             .filter(rule => {
                 if (!rule) return false;
-                const key = `${rule.type}:${rule.value.toLowerCase()}`;
+                const key = this.ruleKey(rule);
                 if (seen.has(key)) return false;
                 seen.add(key);
                 return true;
             });
+    },
+
+    // A check of one condition: a function of the message { login, text (lower
+    // case), raw (as written), badges, ownLogin }. Built once per settings change
+    compileCondition(condition) {
+        const match = String(condition.value).toLowerCase();
+        switch (condition.type) {
+            case 'user':
+                return message => message.login === match;
+            case 'badge':
+                return message => message.badges.some(badge => badge.name.toLowerCase().includes(match));
+            case 'role': {
+                const def = ROLE_BADGES[condition.value];
+                return message => Boolean(def.logins && def.logins.includes(message.login)) ||
+                    message.badges.some(badge =>
+                        def.ids.some(id => badge.src.includes(id)) || def.names.test(badge.name));
+            }
+            case 'keyword': {
+                const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                if (condition.mode === 'regex') {
+                    const regex = this.compileRegex(condition.value);
+                    return message => Boolean(regex) && regex.test(message.raw);
+                }
+                if (condition.mode === 'word') {
+                    // Not a part of a longer word: letters, digits and _ around it do not count
+                    const regex = new RegExp(`(?<![\\p{L}\\p{N}_])${escape(match)}(?![\\p{L}\\p{N}_])`, 'iu');
+                    return message => regex.test(message.raw);
+                }
+                if (condition.mode === 'mention') {
+                    // "@login" or the login as a separate word
+                    const pattern = login => new RegExp(`(?<![\\w])@?${escape(login)}(?![\\w])`, 'i');
+                    const fixed = match === MENTION_ME ? null : pattern(match);
+                    return message => {
+                        const regex = fixed || (message.ownLogin ? pattern(message.ownLogin) : null);
+                        return Boolean(regex) && regex.test(message.raw);
+                    };
+                }
+                return message => message.text.includes(match);
+            }
+        }
+        return () => false;
     },
 
     // Settings in a single shape. Also understands the format of versions before
@@ -252,7 +367,25 @@ const FilterStore = {
 
         const timestampFormat = TIMESTAMP_FORMATS.includes(raw.timestampFormat) ? raw.timestampFormat : 'short';
 
-        return { presets, activePresetId, isFilterEnabled, language, timestampFormat };
+        // Filtered chat: keep history between page reloads (on by default), collapse
+        // to the header when quiet, blur usernames for screen capture
+        const historyEnabled = raw.historyEnabled !== false;
+        const autoCollapse = raw.autoCollapse === true;
+        const hideNames = raw.hideNames === true;
+
+        // Notifications about new messages of the filtered chat: a sound and a
+        // desktop notification when the Twitch tab is not in front (needs a
+        // permission), both off by default. notifyScope: see NOTIFY_SCOPES.
+        // sendStatus: the message input shows whether your message reached the chat
+        const notifySound = raw.notifySound === true;
+        const notifyDesktop = raw.notifyDesktop === true;
+        const notifyScope = NOTIFY_SCOPES.includes(raw.notifyScope) ? raw.notifyScope : 'all';
+        const sendStatus = raw.sendStatus !== false;
+
+        return {
+            presets, activePresetId, isFilterEnabled, language, timestampFormat,
+            historyEnabled, autoCollapse, hideNames, notifySound, notifyDesktop, notifyScope, sendStatus
+        };
     },
 
     getActivePreset(state) {
@@ -283,7 +416,14 @@ const FilterStore = {
                 activePresetId: data.activePresetId,
                 isFilterEnabled: data.isFilterEnabled,
                 language: data.language,
-                timestampFormat: data.timestampFormat
+                timestampFormat: data.timestampFormat,
+                historyEnabled: data.historyEnabled,
+                autoCollapse: data.autoCollapse,
+                hideNames: data.hideNames,
+                notifySound: data.notifySound,
+                notifyDesktop: data.notifyDesktop,
+                notifyScope: data.notifyScope,
+                sendStatus: data.sendStatus
             }),
             fresh: false,
             legacy: false
@@ -318,8 +458,8 @@ const FilterStore = {
             format: EXPORT_FORMAT,
             version: 1,
             name: preset.name,
-            rules: preset.rules.map(({ type, value, action, enabled, note }) =>
-                ({ type, value, action, enabled, note }))
+            rules: preset.rules.map(({ type, value, mode, action, enabled, note, conditions, notify }) =>
+                ({ type, value, mode, action, enabled, note, conditions, notify }))
         });
     },
 
@@ -349,6 +489,17 @@ const FilterStore = {
         return { name: '', rules: this.normalizeRules(names.map(value => ({ type: 'user', value }))) };
     },
 
+    // A rule without its default fields: sync storage is small (100 KB), and
+    // normalizeRule fills the defaults back in when loading
+    compactRule(rule) {
+        const compact = { ...rule };
+        if (compact.mode === 'contains') delete compact.mode;
+        if (!compact.conditions || !compact.conditions.length) delete compact.conditions;
+        else compact.conditions = compact.conditions.map(({ mode, ...rest }) => (mode === 'contains' ? rest : { ...rest, mode }));
+        if (!compact.notify) delete compact.notify;
+        return compact;
+    },
+
     chunkRules(rules) {
         const chunks = [];
         let current = [];
@@ -376,11 +527,18 @@ const FilterStore = {
             activePresetId: state.activePresetId,
             isFilterEnabled: state.isFilterEnabled,
             language: state.language,
-            timestampFormat: state.timestampFormat
+            timestampFormat: state.timestampFormat,
+            historyEnabled: state.historyEnabled,
+            autoCollapse: state.autoCollapse,
+            hideNames: state.hideNames,
+            notifySound: state.notifySound,
+            notifyDesktop: state.notifyDesktop,
+            notifyScope: state.notifyScope,
+            sendStatus: state.sendStatus
         };
 
         state.presets.forEach(preset => {
-            const chunks = this.chunkRules(preset.rules);
+            const chunks = this.chunkRules(preset.rules.map(rule => this.compactRule(rule)));
             chunks.forEach((chunk, i) => {
                 items[`rules_${preset.id}_${i}`] = chunk;
             });

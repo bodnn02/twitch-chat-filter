@@ -2,17 +2,35 @@
 // Copyright (C) 2025-2026 Risher. Licensed under GPL-3.0-only, see LICENSE
 
 // Key of the settings backup in the twitch.tv localStorage
-const BACKUP_KEY = 'twitchChatFilterBackup';
+var BACKUP_KEY = 'twitchChatFilterBackup';
+
+// Auto-collapse of the filtered chat: after this long without matching messages
+var AUTO_COLLAPSE_DELAY = 5 * 60 * 1000;
+
+// Notifications about messages of rules marked "notify": at most one per this
+// interval, so a burst of messages does not ring many times
+var NOTIFY_INTERVAL = 3000;
+
+// Send status: if your message does not appear in the chat within this time,
+// it is marked as not confirmed
+var SEND_TIMEOUT = 6000;
+
+// While the Twitch tab is hidden (another tab, minimized browser) the page
+// does not draw new chat messages, so the chat is read from the Twitch chat
+// server directly: anonymously, read-only, only for notifications
+var TWITCH_IRC_URL = 'wss://irc-ws.chat.twitch.tv:443';
 
 // Button icons: SVG looks the same on every system, unlike emoji
-const ICONS = {
+var ICONS = {
     eye: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M10 4C5 4 1.7 8.3 1.1 9.4a1.2 1.2 0 0 0 0 1.2C1.7 11.7 5 16 10 16s8.3-4.3 8.9-5.4a1.2 1.2 0 0 0 0-1.2C18.3 8.3 15 4 10 4Zm0 10a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-6a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/></svg>',
     eyeOff: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M2.7 1.3 1.3 2.7l3 3C2.6 7 1.5 8.7 1.1 9.4a1.2 1.2 0 0 0 0 1.2C1.7 11.7 5 16 10 16c1.6 0 3-.4 4.2-1.1l3.1 3.1 1.4-1.4-16-16.3ZM10 14a4 4 0 0 1-3.9-4.9l1.6 1.6a2 2 0 0 0 1.6 1.6l1.6 1.6c-.3.1-.6.1-.9.1Zm8.9-4.6C18.3 8.3 15 4 10 4c-1 0-1.9.2-2.8.5l1.7 1.6A4 4 0 0 1 14 11l2.6 2.6c1.2-1.2 2-2.4 2.3-3a1.2 1.2 0 0 0 0-1.2Z"/></svg>',
+    filter: '<svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M2 3h16l-6 7.5V16l-4 2v-7.5L2 3Z"/></svg>',
+    download: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 2h2v8.6l3.3-3.3 1.4 1.4L10 14.4 4.3 8.7l1.4-1.4L9 10.6V2ZM3 15h2v2h10v-2h2v4H3v-4Z"/></svg>',
     popout: '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M11 3h6v6h-2V6.4l-5.3 5.3-1.4-1.4L13.6 5H11V3ZM3 5a2 2 0 0 1 2-2h4v2H5v10h10v-4h2v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Z"/></svg>'
 };
 
 // UI strings shown on the Twitch page
-const TRANSLATIONS = {
+var TRANSLATIONS = {
     en: {
         filteredChat: 'Filtered chat',
         originalChat: 'Original chat',
@@ -25,7 +43,21 @@ const TRANSLATIONS = {
         resize: 'Drag to resize',
         emptyNoRules: 'No rules that show messages — add them in the extension menu',
         emptyFiltered: 'No matching messages yet',
-        emptyAll: 'No messages yet'
+        emptyAll: 'No messages yet',
+        exportChat: 'Export messages',
+        copyText: 'Copy as text',
+        saveTxt: 'Save as .txt',
+        saveCsv: 'Save as .csv',
+        copied: 'Copied',
+        nothingToExport: 'No messages to export',
+        expandChat: 'Collapsed: no new messages. Click to expand',
+        today: 'Today',
+        yesterday: 'Yesterday',
+        quickAddFor: name => `Filter: ${name}`,
+        quickAddTitle: (name, preset) => `${name} · preset “${preset}”`,
+        quickShow: 'Show messages of this user',
+        quickHide: 'Hide messages of this user',
+        quickRemove: 'Remove the rule for this user'
     },
     ru: {
         filteredChat: 'Фильтрованный чат',
@@ -39,7 +71,21 @@ const TRANSLATIONS = {
         resize: 'Потяните, чтобы изменить размер',
         emptyNoRules: 'Нет правил, которые показывают сообщения, — добавьте их в меню расширения',
         emptyFiltered: 'Пока нет подходящих сообщений',
-        emptyAll: 'Пока нет сообщений'
+        emptyAll: 'Пока нет сообщений',
+        exportChat: 'Экспорт сообщений',
+        copyText: 'Скопировать текстом',
+        saveTxt: 'Сохранить в .txt',
+        saveCsv: 'Сохранить в .csv',
+        copied: 'Скопировано',
+        nothingToExport: 'Нет сообщений для экспорта',
+        expandChat: 'Свёрнут: новых сообщений нет. Нажмите, чтобы развернуть',
+        today: 'Сегодня',
+        yesterday: 'Вчера',
+        quickAddFor: name => `Фильтр: ${name}`,
+        quickAddTitle: (name, preset) => `${name} · набор «${preset}»`,
+        quickShow: 'Показывать сообщения пользователя',
+        quickHide: 'Скрывать сообщения пользователя',
+        quickRemove: 'Удалить правило для пользователя'
     }
 };
 
@@ -52,7 +98,7 @@ function pluralRu(n, one, few, many) {
     return many;
 }
 
-class TwitchChatFilter {
+var TwitchChatFilter = class TwitchChatFilter {
     constructor() {
         // Settings from settings.js (FilterStore.normalizeState)
         this.state = null;
@@ -60,7 +106,10 @@ class TwitchChatFilter {
         // Enabled rules of the active preset, split by action
         this.includeRules = [];
         this.excludeRules = [];
+        this.presetId = null;
         this.presetName = '';
+        // Channel of the open page (see detectChannel)
+        this.channel = null;
         this.observer = null;
         this.chatContainer = null;
 
@@ -85,6 +134,61 @@ class TwitchChatFilter {
         this.proxyMenu = null;
         this.suppressClickOn = null;
         this.maxDisplayedMessages = 200;
+
+        // Filtered chat history of the channel (see loadHistory): saved entries,
+        // oldest first, and their keys (time|signature) for deduplication
+        this.history = [];
+        this.historyKeys = new Set();
+        this.historyChannel = null;
+        // Key -> original message element (this session only): clicks on a message
+        // shown from the history still reach the original while it is in the chat
+        this.historyOriginals = new Map();
+        // Signatures of the latest saved messages: Twitch may show them again right
+        // after a page reload, they must not be duplicated. Checked only for a short
+        // time after loading, so repeated messages of a chatter are not lost
+        this.recentSignatures = new Set();
+        this.recentUntil = 0;
+        // Chat elements recognized as such repeats -> their signature (they stay
+        // hidden when the filtered chat is rebuilt)
+        this.repeatedElements = new WeakMap();
+        // Entries waiting to be written (written in batches)
+        this.historyQueue = [];
+        this.historyTimer = null;
+
+        // Auto-collapse: time of the last matching message
+        this.lastMatchAt = 0;
+        this.collapseTimer = null;
+        // Open export menu (see showExportMenu)
+        this.exportMenu = null;
+        // The chat is being rebuilt from the DOM (see processExistingMessages)
+        this.rebuilding = false;
+
+        // Rule counters not written yet: rule id -> { count, last }
+        this.statsDelta = new Map();
+        this.statsTimer = null;
+        // Notifications: time of the last one (not more often than NOTIFY_INTERVAL)
+        this.lastNotifyAt = 0;
+        this.audioContext = null;
+        // Messages already notified about (login|text -> time): the same message
+        // may come from the chat server and then from the page
+        this.notifiedKeys = new Map();
+
+        // Reading the chat while the tab is hidden (see updateBackgroundWatch)
+        this.irc = null;
+        this.ircChannel = null;
+        this.ircRetry = null;
+        this.ircAttempts = 0;
+        this.visibilityHandler = null;
+
+        // Quick add from the chat: floating button over the hovered message
+        this.quickButton = null;
+        this.quickTarget = null;
+        this.quickMenu = null;
+        this.quickHideTimer = null;
+
+        // Send status of your own message: waiting / sent / not confirmed
+        this.sendTimer = null;
+        this.sendStatusHandler = null;
         this.currentLanguage = 'en';
 
         // Share of the height taken by the filtered chat (set by the divider)
@@ -113,6 +217,8 @@ class TwitchChatFilter {
         this.waitTimer = null;
         this.processTimer = null;
         this.reloadTimer = null;
+        // Stopped for good (see destroy)
+        this.destroyed = false;
 
         this.init();
     }
@@ -129,25 +235,82 @@ class TwitchChatFilter {
         this.currentLanguage = FilterStore.resolveLanguage(state.language);
 
         // Preset bound to the open channel, or the default preset
-        const preset = FilterStore.getPresetForChannel(state, FilterStore.channelFromUrl(location.href));
+        this.channel = this.detectChannel();
+        const preset = FilterStore.getPresetForChannel(state, this.channel);
+        this.presetId = preset.id;
         this.presetName = preset.name;
 
-        // match: the value for case-insensitive comparison
+        // test: the rule and all its extra conditions, compiled once
         const rules = preset.rules
             .filter(rule => rule.enabled)
-            .map(rule => ({ ...rule, match: rule.value.toLowerCase() }));
+            .map(rule => {
+                const checks = [rule, ...(rule.conditions || [])].map(condition => FilterStore.compileCondition(condition));
+                return { ...rule, test: message => checks.every(check => check(message)) };
+            });
         this.includeRules = rules.filter(rule => rule.action === 'include');
         this.excludeRules = rules.filter(rule => rule.action === 'exclude');
+    }
+
+    // Channel of the open page. On VOD and clip pages (/videos/…) the URL has no
+    // channel, so it is taken from the page: the streamer link (name or avatar)
+    // in the stream information block. Classes there are hashed, so the link is
+    // found by its contents
+    detectChannel() {
+        const fromUrl = FilterStore.channelFromUrl(location.href);
+        if (fromUrl) return fromUrl;
+
+        const info = document.querySelector(
+            '#live-channel-stream-information, .channel-info-content, [class*="metadata-layout"]'
+        );
+        if (!info) return null;
+
+        const links = Array.from(info.querySelectorAll('a[href]'));
+        const preferred = links.filter(link => link.querySelector('h1, .tw-title, .tw-avatar, [class*="avatar" i]'));
+        for (const link of [...preferred, ...links]) {
+            const channel = FilterStore.channelFromUrl(link.href);
+            if (channel) return channel;
+        }
+        return null;
+    }
+
+    // The page channel became known (or changed) after the settings were applied:
+    // switch to the preset of that channel
+    refreshChannel() {
+        if (!this.state || this.detectChannel() === this.channel) return;
+
+        const previousPresetId = this.presetId;
+        this.setState(this.state);
+        if (this.presetId !== previousPresetId) {
+            this.applySettings();
+        } else {
+            this.updateInterfaceTexts();
+        }
+        this.loadHistory();
     }
 
     async init() {
         await this.loadSettings();
         this.waitForChat();
 
+        // The popup asks for the channel: on VOD pages it is not in the tab URL
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message && message.type === 'getChannel') {
+                sendResponse({ channel: this.detectChannel() });
+            }
+        });
+
         // Settings are changed from the popup via storage, so this works for every
         // open Twitch tab, not just the active one. The popup writes several keys at
         // once, so reload only once
         chrome.storage.onChanged.addListener((changes, areaName) => {
+            if (areaName === 'local' && changes.historyClearedAt) {
+                // Messages already shown stay until the page is reloaded; nothing is
+                // loaded again
+                this.historyQueue = [];
+                this.resetHistory();
+                this.historyChannel = this.channel;
+                return;
+            }
             if (areaName !== 'sync') return;
 
             clearTimeout(this.reloadTimer);
@@ -175,18 +338,26 @@ class TwitchChatFilter {
             // The extension context may have been invalidated (extension update)
             return;
         }
+        if (this.destroyed) return;
 
         const previous = this.state;
         this.setState(state);
         this.writeBackup();
 
-        // Only the language changed: no need to filter again
-        const filterChanged = JSON.stringify({ ...previous, language: '' }) !==
-            JSON.stringify({ ...state, language: '' });
-        if (filterChanged) {
+        // Only the look changed (language, collapsing, hidden names): no need to
+        // filter again
+        const withoutView = value => {
+            const copy = { ...value };
+            VIEW_SETTINGS.forEach(key => delete copy[key]);
+            return JSON.stringify(copy);
+        };
+        if (withoutView(previous) !== withoutView(state)) {
+            if (previous.historyEnabled !== state.historyEnabled) this.resetHistory();
             this.applySettings();
+            if (state.historyEnabled && !previous.historyEnabled) this.loadHistory();
         } else {
             this.updateInterfaceTexts();
+            this.updateBackgroundWatch();
         }
     }
 
@@ -212,6 +383,7 @@ class TwitchChatFilter {
 
     // Apply new settings: rebuild the state from the current DOM
     applySettings() {
+        this.updateBackgroundWatch();
         this.resetProcessed();
         this.filteredMessages = [];
         this.updateInterfaceTexts();
@@ -219,6 +391,7 @@ class TwitchChatFilter {
     }
 
     waitForChat() {
+        if (this.destroyed) return;
         if (this.waitTimer) {
             clearTimeout(this.waitTimer);
             this.waitTimer = null;
@@ -284,7 +457,45 @@ class TwitchChatFilter {
         this.stopTopPanels();
 
         this.removeDualContainer(document.getElementById('twitch-dual-chat-container'));
+        this.resetChatState();
+    }
 
+    // Stop for good: the extension was updated or removed. Only our own container
+    // is removed: a new copy of the script may have created its own already
+    destroy() {
+        this.destroyed = true;
+        clearTimeout(this.collapseTimer);
+        this.closeProxyMenu(false);
+        if (this.observer) this.observer.disconnect();
+        this.observer = null;
+        [this.waitTimer, this.processTimer, this.reloadTimer].forEach(t => t && clearTimeout(t));
+        this.waitTimer = this.processTimer = this.reloadTimer = null;
+        clearInterval(this.popoutCheckTimer);
+        if (this.inputResizeObserver) this.inputResizeObserver.disconnect();
+        this.inputResizeObserver = null;
+        this.stopTopPanels();
+
+        if (this.dualContainer && this.dualContainer.isConnected) {
+            this.removeDualContainer(this.dualContainer);
+        }
+        this.resetChatState();
+    }
+
+    resetChatState() {
+        this.stopBackgroundWatch();
+        this.closeExportMenu();
+        this.closeQuickMenu();
+        if (this.quickButton) this.quickButton.remove();
+        this.quickButton = null;
+        this.quickTarget = null;
+        if (this.sendStatusHandler) this.sendStatusHandler();
+        this.sendStatusHandler = null;
+        clearTimeout(this.sendTimer);
+        this.flushStats();
+        this.resetHistory();
+        clearTimeout(this.collapseTimer);
+        this.collapseTimer = null;
+        this.lastMatchAt = 0;
         this.chatContainer = null;
         this.dualContainer = null;
         this.customChatContainer = null;
@@ -322,6 +533,7 @@ class TwitchChatFilter {
         this.originalChatContainer.querySelector('.twitch-chat-title-text').textContent = t.originalChat;
 
         this.setButtonLabel(this.customChatContainer.querySelector('.twitch-popout-filtered'), t.openPopout);
+        this.setButtonLabel(this.customChatContainer.querySelector('.twitch-export-filtered'), t.exportChat);
         this.setButtonLabel(this.originalChatContainer.querySelector('.twitch-popout-original'), t.openOriginalPopout);
         this.setToggleState(this.customChatContainer.querySelector('.twitch-toggle-filtered'), filteredHidden);
         this.setToggleState(this.originalChatContainer.querySelector('.twitch-toggle-original'), originalHidden);
@@ -336,7 +548,20 @@ class TwitchChatFilter {
             this.popoutWindow.document.title = t.filteredChat;
         }
 
+        // Usernames blurred for screen capture: in the filtered chat and its window
+        const hideNames = Boolean(this.state && this.state.hideNames);
+        this.dualContainer.classList.toggle('twitch-filter-hide-names', hideNames);
+        if (popoutList) popoutList.classList.toggle('twitch-filter-hide-names', hideNames);
+
+        // Date separators are in the current language
+        [this.messagesContainer, popoutList].forEach(list => {
+            list?.querySelectorAll('.twitch-filter-date').forEach(el => {
+                el.textContent = this.formatDay(Number(el.dataset.time));
+            });
+        });
+
         this.updateMessageCount();
+        this.updateCollapse();
     }
 
     // Hint in the empty filtered chat
@@ -387,6 +612,7 @@ class TwitchChatFilter {
                     </span>
                     <span class="twitch-filter-header-controls">
                         <span class="twitch-filter-count"></span>
+                        <button type="button" class="twitch-chat-btn twitch-export-filtered" aria-haspopup="menu">${ICONS.download}</button>
                         <button type="button" class="twitch-chat-btn twitch-popout-filtered">${ICONS.popout}</button>
                         <button type="button" class="twitch-chat-btn twitch-toggle-filtered"></button>
                     </span>
@@ -441,9 +667,15 @@ class TwitchChatFilter {
         this.setupToggleButtons();
         this.setupResizer(dualChatContainer.querySelector('#twitch-chat-resizer'));
         this.setupPopoutButtons();
+        this.setupExportButton();
+        this.setupCollapse();
+        this.setupQuickAdd(originalContent);
+        this.setupSendStatus(originalContent);
+        this.setupBackgroundWatch();
         this.setupMessageInteractions(this.messagesContainer);
         this.setupInputWatcher(originalContent);
         this.setupTopPanels(originalContent);
+        this.loadHistory();
     }
 
     // Twitch top panels (leaderboard, pinned message, hype train, polls) are shown
@@ -815,6 +1047,7 @@ class TwitchChatFilter {
         const list = doc.createElement('div');
         const themeRoot = this.chatContainer?.closest('[class*="tw-root--theme"]');
         list.className = `twitch-filter-messages ${themeRoot ? themeRoot.className : ''}`;
+        list.classList.toggle('twitch-filter-hide-names', Boolean(this.state && this.state.hideNames));
         doc.body.appendChild(list);
         this.setupMessageInteractions(list);
         this.updateInterfaceTexts();
@@ -925,11 +1158,24 @@ class TwitchChatFilter {
         const popoutList = this.getPopoutList();
         if (popoutList) popoutList.textContent = '';
 
+        // Saved history of the channel (filtered by the current rules), then the
+        // messages that are in the chat now. Messages already in the chat are not
+        // counted or notified about again
+        this.rebuilding = true;
+        this.history.forEach(entry => {
+            if (this.shouldShowMessage(entry.login, entry.badges, entry.text)) {
+                this.lastMatchAt = Math.max(this.lastMatchAt, entry.receivedAt);
+                this.showMessage(this.messageFromEntry(entry));
+            }
+        });
+
         this.findAllMessages().forEach((message) => {
             this.processMessage(message);
         });
+        this.rebuilding = false;
 
         this.updateMessageCount();
+        this.updateCollapse();
         this.scrollToBottom(true);
     }
 
@@ -939,6 +1185,7 @@ class TwitchChatFilter {
         });
 
         this.updateMessageCount();
+        this.updateCollapse();
     }
 
     processMessage(messageElement) {
@@ -964,6 +1211,9 @@ class TwitchChatFilter {
 
         // Arrival time: keep the previous one when processing again (settings change)
         const known = this.messageTimes.get(messageElement);
+        // A message that just arrived (not a rebuild of the chat after a settings
+        // change): only these are counted and notified about
+        const isFresh = !(known && known.signature === signature) && !this.rebuilding;
         const receivedAt = known && known.signature === signature ? known.time : Date.now();
         this.messageTimes.set(messageElement, { signature, time: receivedAt });
 
@@ -977,26 +1227,713 @@ class TwitchChatFilter {
             }
         }
 
-        if (this.shouldShowMessage(login, messageElement, messageText)) {
-            const messageData = {
-                // Time in the video (VOD), used to seek on click
-                timestamp: vodTime,
-                receivedAt: receivedAt,
-                hasOwnTimestamp: Boolean(vodTime),
-                // Copy of the original message with all badges, emotes, name color etc.
-                node: this.createMessageClone(messageElement),
-                original: messageElement,
-                signature: signature
-            };
+        // Already in the saved history: shown from there (see processExistingMessages)
+        const key = `${receivedAt}|${signature}`;
+        if (this.historyKeys.has(key)) return;
 
-            this.filteredMessages.push(messageData);
-            if (this.filteredMessages.length > this.maxDisplayedMessages) {
-                this.filteredMessages.shift();
-            }
-
-            this.appendMessageToChat(messageData);
-            this.appendMessageToPopout(messageData);
+        // Twitch showed a saved message again after a page reload
+        if (!vodTime && this.repeatedElements.get(messageElement) === signature) return;
+        if (!vodTime && Date.now() < this.recentUntil && this.recentSignatures.delete(signature)) {
+            this.repeatedElements.set(messageElement, signature);
+            return;
         }
+
+        const badges = this.getBadges(messageElement);
+        const result = this.evaluateMessage(login, badges, messageText);
+        // Your message reached the chat (see setupSendStatus)
+        if (result.own && isFresh && !vodTime) this.confirmSent();
+        // Counters and notifications: new live chat messages only
+        if (isFresh && !vodTime) this.countMatches(result.matched);
+        if (!result.show) return;
+
+        const messageData = {
+            // Time in the video (VOD), used to seek on click
+            timestamp: vodTime,
+            receivedAt: receivedAt,
+            hasOwnTimestamp: Boolean(vodTime),
+            // Copy of the original message with all badges, emotes, name color etc.
+            node: this.createMessageClone(messageElement),
+            original: messageElement,
+            signature: signature,
+            login: login,
+            name: username,
+            text: messageText
+        };
+
+        // Live chat only: a VOD replays its chat by itself
+        if (!vodTime) this.saveToHistory(messageData, badges, key);
+
+        this.lastMatchAt = Math.max(this.lastMatchAt, receivedAt);
+        this.showMessage(messageData);
+
+        if (isFresh && !vodTime) {
+            const notifyRule = this.notifyRuleFor(result);
+            this.debug('message', login, notifyRule ? `notify (${notifyRule.type} ${notifyRule.value})` : 'no notification');
+            if (notifyRule) this.notify(messageData, notifyRule);
+        }
+    }
+
+    showMessage(messageData) {
+        this.filteredMessages.push(messageData);
+        if (this.filteredMessages.length > this.maxDisplayedMessages) {
+            this.filteredMessages.shift();
+        }
+
+        this.appendMessageToChat(messageData);
+        this.appendMessageToPopout(messageData);
+    }
+
+    // --- Rule counters ------------------------------------------------------------
+    // How many new messages each rule matched and when it last did: shown in the
+    // extension menu. Written to chrome.storage.local in batches
+
+    countMatches(rules) {
+        if (!rules.length) return;
+        const now = Date.now();
+        rules.forEach(rule => {
+            const delta = this.statsDelta.get(rule.id) || { count: 0, last: 0 };
+            delta.count++;
+            delta.last = now;
+            this.statsDelta.set(rule.id, delta);
+        });
+        if (!this.statsTimer) {
+            this.statsTimer = setTimeout(() => this.flushStats(), 5000);
+        }
+    }
+
+    async flushStats() {
+        clearTimeout(this.statsTimer);
+        this.statsTimer = null;
+        if (!this.statsDelta.size) return;
+
+        const delta = this.statsDelta;
+        this.statsDelta = new Map();
+        try {
+            const { ruleStats = {} } = await chrome.storage.local.get('ruleStats');
+            delta.forEach((value, id) => {
+                const current = ruleStats[id] || { count: 0, last: 0 };
+                ruleStats[id] = { count: current.count + value.count, last: Math.max(current.last, value.last) };
+            });
+            await chrome.storage.local.set({ ruleStats });
+        } catch (error) {
+            // The extension context is invalidated
+        }
+    }
+
+    // --- Notifications -------------------------------------------------------------
+    // A rule marked "notify" showed a new message: a short sound and, when the
+    // Twitch tab is not in front, a desktop notification (background.js)
+
+    // Which rule a new message is notified for (null: no notification): any
+    // rule that showed it, or only rules marked "notify" (notifyScope)
+    notifyRuleFor(result) {
+        if (!this.notificationsOn() || !result.show || result.own) return null;
+        if (this.state.notifyScope === 'rules') return result.included.find(rule => rule.notify) || null;
+        return result.included[0] || null;
+    }
+
+    // Notifications are possible at all: on in the settings, and the filter is on
+    // (with the filter off every message is shown, that would be every message)
+    notificationsOn() {
+        return Boolean(this.state && this.isFilterEnabled && (this.state.notifyDesktop || this.state.notifySound));
+    }
+
+    // Diagnostics: with localStorage.twitchChatFilterDebug = '1' on twitch.tv
+    // the decisions about notifications are written to the console
+    debug(...args) {
+        try {
+            if (localStorage.getItem('twitchChatFilterDebug') !== '1') return;
+        } catch (error) {
+            return;
+        }
+        console.log('[Chat Filter]', ...args);
+    }
+
+    notifyKey(login, text) {
+        return `${String(login).toLowerCase()}|${String(text).replace(/\s+/g, ' ').trim().toLowerCase()}`;
+    }
+
+    notify(msgData, rule) {
+        const now = Date.now();
+
+        // Once per message, whichever way it came first
+        const key = this.notifyKey(msgData.login, msgData.text);
+        if (this.notifiedKeys.has(key)) {
+            this.debug('notify: already notified', key);
+            return;
+        }
+        this.notifiedKeys.set(key, now);
+        this.notifiedKeys.forEach((time, k) => {
+            if (now - time > 10 * 60 * 1000) this.notifiedKeys.delete(k);
+        });
+
+        if (now - this.lastNotifyAt < NOTIFY_INTERVAL) {
+            this.debug('notify: skipped, too soon after the previous one');
+            return;
+        }
+        this.lastNotifyAt = now;
+
+        if (this.state.notifySound) this.playSound();
+
+        const background = document.hidden || !document.hasFocus();
+        this.debug('notify:', msgData.login, { desktop: this.state.notifyDesktop, background, sound: this.state.notifySound });
+        if (this.state.notifyDesktop && background) {
+            try {
+                chrome.runtime.sendMessage({
+                    type: 'notify',
+                    title: `${msgData.name || msgData.login} · ${this.channel || 'Twitch'}`,
+                    message: msgData.text.slice(0, 200),
+                    note: rule.note || ''
+                }).then(response => this.debug('notify: result', response), error => this.debug('notify: error', String(error)));
+            } catch (error) {
+                this.debug('notify: extension context lost', String(error));
+            }
+        }
+    }
+
+    // Two short tones; no sound file needed. The browser may keep the sound
+    // muted until the page was clicked once
+    playSound() {
+        try {
+            if (!this.audioContext) this.audioContext = new AudioContext();
+            const ctx = this.audioContext;
+            if (ctx.state === 'suspended') ctx.resume().catch(() => { });
+            [[880, 0], [1320, 0.12]].forEach(([frequency, delay]) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const start = ctx.currentTime + delay;
+                osc.frequency.value = frequency;
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.exponentialRampToValueAtTime(0.15, start + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(start);
+                osc.stop(start + 0.2);
+            });
+        } catch (error) {
+            // Web Audio is unavailable
+        }
+    }
+
+    // --- Chat while the tab is hidden ---------------------------------------------------
+    // Twitch draws new messages only while the page is visible. For rules with
+    // notifications, a hidden tab connects to the Twitch chat server as an
+    // anonymous guest (read-only, like a logged-out viewer) and checks the same
+    // rules there. Nothing is sent except the channel name; the connection is
+    // closed as soon as the tab is visible again
+
+    setupBackgroundWatch() {
+        if (this.visibilityHandler) return;
+        this.visibilityHandler = () => this.updateBackgroundWatch();
+        document.addEventListener('visibilitychange', this.visibilityHandler);
+        this.updateBackgroundWatch();
+    }
+
+    stopBackgroundWatch() {
+        if (this.visibilityHandler) document.removeEventListener('visibilitychange', this.visibilityHandler);
+        this.visibilityHandler = null;
+        this.closeIrc();
+    }
+
+    // Needed: the tab is hidden, a live channel page, notifications are on and
+    // some enabled "show" rule can notify
+    needsBackgroundWatch() {
+        return Boolean(document.hidden && !this.destroyed && this.channel && this.notificationsOn() &&
+            !/^\/videos\//i.test(location.pathname) &&
+            this.includeRules.some(rule => this.state.notifyScope !== 'rules' || rule.notify));
+    }
+
+    updateBackgroundWatch() {
+        const needed = this.needsBackgroundWatch();
+        if (needed !== Boolean(this.irc)) {
+            this.debug('chat server connection', needed ? 'on' : 'off', { hidden: document.hidden, channel: this.channel });
+        }
+        if (needed) {
+            if (!this.irc || this.ircChannel !== this.channel) this.openIrc();
+        } else {
+            this.closeIrc();
+        }
+    }
+
+    openIrc() {
+        this.closeIrc();
+        const channel = this.channel;
+        let socket;
+        try {
+            socket = new WebSocket(TWITCH_IRC_URL);
+        } catch (error) {
+            return;
+        }
+        this.irc = socket;
+        this.ircChannel = channel;
+
+        socket.addEventListener('open', () => {
+            this.ircAttempts = 0;
+            socket.send('CAP REQ :twitch.tv/tags');
+            socket.send(`NICK justinfan${Math.floor(10000 + Math.random() * 89999)}`);
+            socket.send(`JOIN #${channel}`);
+        });
+        socket.addEventListener('message', (e) => {
+            String(e.data).split('\r\n').forEach(line => {
+                if (line) this.handleIrcLine(socket, line);
+            });
+        });
+        socket.addEventListener('close', () => {
+            if (this.irc !== socket) return;
+            this.irc = null;
+            // Connection lost while still needed: try again, waiting longer each time
+            if (this.needsBackgroundWatch()) {
+                const delay = Math.min(60000, 2000 * 2 ** this.ircAttempts++);
+                this.ircRetry = setTimeout(() => this.updateBackgroundWatch(), delay);
+            }
+        });
+    }
+
+    closeIrc() {
+        clearTimeout(this.ircRetry);
+        this.ircRetry = null;
+        const socket = this.irc;
+        this.irc = null;
+        this.ircChannel = null;
+        if (socket) {
+            try {
+                socket.close();
+            } catch (error) {
+                // Already closed
+            }
+        }
+    }
+
+    // One IRC line: "@tags :login!login@login.tmi.twitch.tv PRIVMSG #channel :text"
+    handleIrcLine(socket, line) {
+        if (line.startsWith('PING')) {
+            socket.send(line.replace('PING', 'PONG'));
+            return;
+        }
+
+        const match = line.match(/^(?:@(\S+) )?:([^!\s]+)![^\s]* PRIVMSG #\S+ :(.*)$/);
+        if (!match) return;
+        const tags = {};
+        (match[1] || '').split(';').forEach(pair => {
+            const index = pair.indexOf('=');
+            if (index > 0) tags[pair.slice(0, index)] = pair.slice(index + 1);
+        });
+        const login = match[2].toLowerCase();
+        // /me messages come as "\u0001ACTION text\u0001"
+        const text = match[3].replace(/^\u0001ACTION (.*)\u0001$/, '$1');
+        const name = (tags['display-name'] || '').replace(/\\s/g, ' ') || login;
+        this.handleBackgroundMessage(login, name, text, this.badgesFromTags(tags.badges));
+    }
+
+    // "moderator/1,subscriber/12" -> badges like on the page. Only the badge set
+    // names are known here, which is what role rules check by name
+    badgesFromTags(value) {
+        return String(value || '').split(',').filter(Boolean).map(badge => ({
+            src: '',
+            name: badge.split('/')[0].replace(/[-_]/g, ' ')
+        }));
+    }
+
+    handleBackgroundMessage(login, name, text, badges) {
+        const rule = this.notifyRuleFor(this.evaluateMessage(login, badges, text));
+        this.debug('chat server message', login, rule ? `notify (${rule.type} ${rule.value})` : 'no notification');
+        if (rule) this.notify({ login, name, text }, rule);
+    }
+
+    // --- Quick add from the chat -----------------------------------------------------
+    // A button over the hovered message (in the original and the filtered chat)
+    // opens a menu: show / hide messages of this user. The button lives in our own
+    // layer and is positioned over the message: Twitch messages are rendered by
+    // React and must not get foreign elements
+
+    setupQuickAdd(originalContent) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'twitch-filter-quick';
+        button.innerHTML = ICONS.filter;
+        button.hidden = true;
+        document.body.appendChild(button);
+        this.quickButton = button;
+
+        const show = (target, login, name) => {
+            clearTimeout(this.quickHideTimer);
+            if (this.quickMenu) return;
+            const same = this.quickTarget && this.quickTarget.element === target && !button.hidden;
+            this.quickTarget = { element: target, login, name };
+            button.hidden = false;
+            if (!same) this.setButtonLabel(button, this.t.quickAddFor(name));
+            // Twitch draws its hover actions a moment later: place again on the next
+            // frame
+            this.placeQuickButton(target);
+            requestAnimationFrame(() => {
+                if (this.quickTarget && this.quickTarget.element === target) this.placeQuickButton(target);
+            });
+        };
+        const scheduleHide = () => {
+            clearTimeout(this.quickHideTimer);
+            this.quickHideTimer = setTimeout(() => {
+                if (!this.quickMenu) button.hidden = true;
+            }, 250);
+        };
+
+        originalContent.addEventListener('mouseover', (e) => {
+            const root = e.target.closest?.('.chat-line__message, [data-a-target="chat-line-message"], .vod-message');
+            if (!root || !originalContent.contains(root)) return;
+            const login = this.extractLogin(root);
+            if (login) show(root, login.toLowerCase(), this.extractUsername(root) || login);
+        });
+        originalContent.addEventListener('mouseleave', scheduleHide);
+        originalContent.addEventListener('mouseout', (e) => {
+            if (!e.relatedTarget || !e.relatedTarget.closest?.('.chat-line__message, [data-a-target="chat-line-message"], .vod-message')) {
+                scheduleHide();
+            }
+        });
+
+        this.messagesContainer.addEventListener('mouseover', (e) => {
+            const wrapper = e.target.closest?.('.twitch-filter-message');
+            const msgData = wrapper && this.renderedMessages.get(wrapper);
+            if (msgData && msgData.login) show(wrapper, msgData.login.toLowerCase(), msgData.name || msgData.login);
+        });
+        this.messagesContainer.addEventListener('mouseleave', scheduleHide);
+
+        button.addEventListener('mouseenter', () => clearTimeout(this.quickHideTimer));
+        button.addEventListener('mouseleave', scheduleHide);
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.quickMenu) {
+                this.closeQuickMenu();
+            } else if (this.quickTarget) {
+                this.showQuickMenu(this.quickTarget);
+            }
+        });
+        // Scrolling moves the messages away from the button
+        document.addEventListener('scroll', () => {
+            if (!this.quickMenu) button.hidden = true;
+        }, { capture: true, passive: true });
+    }
+
+    // Twitch's own action buttons of a message ("⋮", reply), if they are drawn:
+    // the right-most visible button outside the message text
+    findMessageActions(target) {
+        const buttons = Array.from(target.querySelectorAll(
+            '.video-chat__message-menu button, [class*="message-menu"] button, .chat-line__icons button, ' +
+            '[data-test-selector*="message-actions"] button, button[aria-label*="Message Actions" i]'
+        )).filter(el => !el.closest('[data-a-target="chat-line-message-body"], .video-chat__message'));
+        let best = null;
+        let bestRect = null;
+        buttons.forEach(el => {
+            const rect = el.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            if (!bestRect || rect.left < bestRect.left) {
+                best = el;
+                bestRect = rect;
+            }
+        });
+        return best ? bestRect : null;
+    }
+
+    // The button goes to the left of Twitch's own actions ("⋮"), at the same
+    // height, as one more action of the message. Without them: at the right edge,
+    // on the line with the username, which is what the button is about
+    placeQuickButton(target) {
+        const button = this.quickButton;
+        const size = 24;
+        const rootRect = target.getBoundingClientRect();
+        let top;
+        let left;
+
+        const actions = this.findMessageActions(target);
+        if (actions) {
+            top = actions.top + (actions.height - size) / 2;
+            left = actions.left - size - 4;
+        } else {
+            const name = target.querySelector('[data-a-target="chat-message-username"], .chat-author__display-name');
+            const nameRect = name && name.getBoundingClientRect();
+            const line = nameRect && nameRect.height ? nameRect : { top: rootRect.top, height: Math.min(rootRect.height, 24) };
+            top = line.top + (line.height - size) / 2;
+            left = rootRect.right - size - 6;
+        }
+
+        // Within the message and the window
+        left = Math.max(rootRect.left, Math.min(left, window.innerWidth - size - 4));
+        top = Math.max(rootRect.top, top);
+        button.style.top = `${Math.round(top)}px`;
+        button.style.left = `${Math.round(left)}px`;
+    }
+
+    // The plain user rule of this login in the preset used here (without extra
+    // conditions)
+    findUserRule(preset, login) {
+        return preset.rules.find(rule => rule.type === 'user' && rule.value === login && !rule.conditions.length);
+    }
+
+    showQuickMenu(target) {
+        this.closeQuickMenu();
+        const t = this.t;
+        const preset = this.state.presets.find(p => p.id === this.presetId);
+        if (!preset) return;
+        const existing = this.findUserRule(preset, target.login);
+
+        const menu = document.createElement('div');
+        menu.className = 'twitch-filter-menu';
+        menu.setAttribute('role', 'menu');
+        const title = document.createElement('div');
+        title.className = 'twitch-filter-menu-hint';
+        title.textContent = t.quickAddTitle(target.name, preset.name);
+        menu.appendChild(title);
+
+        const items = [];
+        if (!existing || existing.action !== 'include' || !existing.enabled) {
+            items.push([t.quickShow, () => this.setUserRule(target.login, 'include')]);
+        }
+        if (!existing || existing.action !== 'exclude' || !existing.enabled) {
+            items.push([t.quickHide, () => this.setUserRule(target.login, 'exclude')]);
+        }
+        if (existing) {
+            items.push([t.quickRemove, () => this.setUserRule(target.login, null)]);
+        }
+        items.forEach(([label, action]) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.setAttribute('role', 'menuitem');
+            item.textContent = label;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeQuickMenu();
+                action();
+            });
+            menu.appendChild(item);
+        });
+
+        document.body.appendChild(menu);
+        const anchorRect = this.quickButton.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(4, Math.min(anchorRect.right - menuRect.width, window.innerWidth - menuRect.width - 4))}px`;
+        let top = anchorRect.bottom + 4;
+        if (top + menuRect.height > window.innerHeight - 4) top = Math.max(4, anchorRect.top - menuRect.height - 4);
+        menu.style.top = `${top}px`;
+        menu.querySelector('button')?.focus();
+
+        const onOutside = (e) => {
+            if (!menu.contains(e.target) && !this.quickButton.contains(e.target)) this.closeQuickMenu();
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') this.closeQuickMenu();
+        };
+        document.addEventListener('mousedown', onOutside, true);
+        document.addEventListener('keydown', onKey, true);
+        this.quickMenu = {
+            menu,
+            cleanup: () => {
+                document.removeEventListener('mousedown', onOutside, true);
+                document.removeEventListener('keydown', onKey, true);
+            }
+        };
+    }
+
+    closeQuickMenu() {
+        if (!this.quickMenu) return;
+        this.quickMenu.menu.remove();
+        this.quickMenu.cleanup();
+        this.quickMenu = null;
+        if (this.quickButton) this.quickButton.hidden = true;
+    }
+
+    // action: include / exclude, or null to remove the rule. Saved like changes
+    // from the extension menu; the filter is rebuilt through storage.onChanged
+    async setUserRule(login, action) {
+        const state = JSON.parse(JSON.stringify(this.state));
+        const preset = state.presets.find(p => p.id === this.presetId);
+        if (!preset) return;
+
+        const existing = this.findUserRule(preset, login);
+        if (!action) {
+            preset.rules = preset.rules.filter(rule => rule !== existing);
+        } else if (existing) {
+            Object.assign(existing, { action, enabled: true, updated: Date.now() });
+        } else {
+            const rule = FilterStore.normalizeRule({ type: 'user', value: login, action });
+            if (rule) preset.rules.push(rule);
+        }
+
+        try {
+            await FilterStore.saveAll(state);
+        } catch (error) {
+            // Storage quota or the extension context is invalidated
+        }
+    }
+
+    // --- Send status ----------------------------------------------------------------
+    // After you send a message the input is outlined: gray while waiting, green
+    // when the message appeared in the chat, orange if it did not within
+    // SEND_TIMEOUT (slow mode, followers-only, AutoMod...). The class is set on
+    // our container, so Twitch elements are not changed
+
+    setupSendStatus(originalContent) {
+        const isInput = target => target.closest?.('[data-a-target="chat-input"], .chat-wysiwyg-input__editor, textarea');
+        const onKey = (e) => {
+            if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+            const input = isInput(e.target);
+            if (!input || !originalContent.contains(input)) return;
+            if (!(input.value ?? input.textContent).trim()) return;
+            this.startSend();
+        };
+        const onClick = (e) => {
+            const send = e.target.closest?.('[data-a-target="chat-send-button"]');
+            if (send && originalContent.contains(send)) this.startSend();
+        };
+        document.addEventListener('keydown', onKey, true);
+        document.addEventListener('click', onClick, true);
+        this.sendStatusHandler = () => {
+            document.removeEventListener('keydown', onKey, true);
+            document.removeEventListener('click', onClick, true);
+        };
+    }
+
+    setSendStatus(status) {
+        if (!this.dualContainer) return;
+        ['pending', 'sent', 'failed'].forEach(name => {
+            this.dualContainer.classList.toggle(`twitch-filter-send-${name}`, status === name);
+        });
+    }
+
+    startSend() {
+        if (!this.state || !this.state.sendStatus) return;
+        clearTimeout(this.sendTimer);
+        this.setSendStatus('pending');
+        this.sendTimer = setTimeout(() => {
+            this.setSendStatus('failed');
+            this.sendTimer = setTimeout(() => this.setSendStatus(null), 4000);
+        }, SEND_TIMEOUT);
+    }
+
+    confirmSent() {
+        if (!this.dualContainer || !this.dualContainer.classList.contains('twitch-filter-send-pending')) return;
+        clearTimeout(this.sendTimer);
+        this.setSendStatus('sent');
+        this.sendTimer = setTimeout(() => this.setSendStatus(null), 1500);
+    }
+
+    // --- History of the filtered chat ------------------------------------------
+    // Stored by background.js. Only live chat messages that passed the filter are
+    // saved; when the rules change, the saved ones are filtered again
+
+    resetHistory() {
+        this.flushHistory();
+        this.history = [];
+        this.historyKeys = new Set();
+        this.historyChannel = null;
+        this.historyOriginals = new Map();
+        this.recentSignatures = new Set();
+        this.repeatedElements = new WeakMap();
+    }
+
+    // Load the saved history of the open channel and rebuild the filtered chat
+    async loadHistory() {
+        const channel = this.channel;
+        if (!this.state || !this.state.historyEnabled || !channel || channel === this.historyChannel) return;
+        this.historyChannel = channel;
+
+        let response = null;
+        try {
+            response = await chrome.runtime.sendMessage({
+                type: 'history:get', channel, limit: this.maxDisplayedMessages * 2
+            });
+        } catch (error) {
+            // The extension context is invalidated
+        }
+        if (this.destroyed || this.historyChannel !== channel || !response || !response.ok) return;
+
+        // Messages of this session that are already in memory stay after the
+        // loaded ones
+        const loaded = response.result.filter(entry => entry && !this.historyKeys.has(entry.key));
+        const recentFrom = Date.now() - 10 * 60 * 1000;
+        loaded.forEach(entry => {
+            this.historyKeys.add(entry.key);
+            if (entry.receivedAt > recentFrom) this.recentSignatures.add(entry.signature);
+        });
+        this.recentUntil = Date.now() + 15 * 1000;
+        this.history = [...loaded, ...this.history];
+        if (this.messagesContainer) this.applySettings();
+    }
+
+    saveToHistory(messageData, badges, key) {
+        const channel = this.channel;
+        if (!this.state || !this.state.historyEnabled || !channel) return;
+
+        const entry = {
+            key,
+            channel,
+            receivedAt: messageData.receivedAt,
+            login: messageData.login,
+            name: messageData.name,
+            text: messageData.text,
+            badges,
+            html: messageData.node.outerHTML,
+            signature: messageData.signature
+        };
+        this.history.push(entry);
+        this.historyKeys.add(key);
+        this.historyOriginals.set(key, messageData.original);
+        if (this.history.length > HISTORY_LIMIT) {
+            const removed = this.history.shift();
+            this.historyKeys.delete(removed.key);
+            this.historyOriginals.delete(removed.key);
+        }
+
+        // One write for a burst of messages
+        this.historyQueue.push(entry);
+        if (!this.historyTimer) {
+            this.historyTimer = setTimeout(() => this.flushHistory(), 2000);
+        }
+    }
+
+    flushHistory() {
+        clearTimeout(this.historyTimer);
+        this.historyTimer = null;
+        if (!this.historyQueue.length) return;
+
+        const entries = this.historyQueue;
+        this.historyQueue = [];
+        try {
+            chrome.runtime.sendMessage({ type: 'history:add', entries }).catch(() => { });
+        } catch (error) {
+            // The extension context is invalidated
+        }
+    }
+
+    // A saved message as message data: the copy is rebuilt from the saved markup.
+    // The original is gone from the chat, so clicks on it are not passed on
+    messageFromEntry(entry) {
+        return {
+            timestamp: null,
+            receivedAt: entry.receivedAt,
+            hasOwnTimestamp: false,
+            node: this.nodeFromHtml(entry.html),
+            original: this.historyOriginals.get(entry.key) || null,
+            signature: entry.signature,
+            login: entry.login,
+            name: entry.name,
+            text: entry.text
+        };
+    }
+
+    // The markup is our own copy of a Twitch message; still, only safe content is
+    // let through: no scripts, frames, event handlers or script links
+    nodeFromHtml(html) {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        template.content.querySelectorAll('script, iframe, object, embed, link, style, meta, form')
+            .forEach(el => el.remove());
+        template.content.querySelectorAll('*').forEach(el => {
+            Array.from(el.attributes).forEach(attr => {
+                const name = attr.name.toLowerCase();
+                const unsafeUrl = ['href', 'src', 'srcset', 'xlink:href', 'action'].includes(name) &&
+                    /^\s*(javascript|vbscript|data):/i.test(attr.value) && !/^\s*data:image\//i.test(attr.value);
+                if (name.startsWith('on') || unsafeUrl) el.removeAttribute(attr.name);
+            });
+        });
+        return template.content.firstElementChild || document.createElement('div');
     }
 
     // Copy of a Twitch message: its look (badges, emotes, stickers, mentions, name
@@ -1080,16 +2017,241 @@ class TwitchChatFilter {
     // unless the user is reading history
     appendRendered(list, msgData) {
         const wasNearBottom = this.isNearBottom(list);
+        const doc = list.ownerDocument;
 
-        list.appendChild(this.renderMessage(msgData, list.ownerDocument));
+        // Separator when the day changes, and before the first message if it is not
+        // from today (messages from the history)
+        const day = this.dayKey(msgData.receivedAt);
+        const last = list.lastElementChild;
+        const lastDay = last ? last.dataset.day : this.dayKey(Date.now());
+        if (day !== lastDay) {
+            const separator = doc.createElement('div');
+            separator.className = 'twitch-filter-date';
+            separator.dataset.day = day;
+            separator.dataset.time = String(msgData.receivedAt);
+            separator.textContent = this.formatDay(msgData.receivedAt);
+            list.appendChild(separator);
+        }
 
-        // Limit the number of DOM elements
-        while (list.children.length > this.maxDisplayedMessages) {
-            list.firstChild.remove();
+        const messageDiv = this.renderMessage(msgData, doc);
+        messageDiv.dataset.day = day;
+        list.appendChild(messageDiv);
+
+        // Limit the number of DOM elements (separators are not counted); a separator
+        // left at the top without its messages goes too
+        let extra = list.querySelectorAll(':scope > .twitch-filter-message').length - this.maxDisplayedMessages;
+        while (extra > 0 && list.firstElementChild) {
+            if (list.firstElementChild.classList.contains('twitch-filter-message')) extra--;
+            list.firstElementChild.remove();
+        }
+        while (list.firstElementChild && list.firstElementChild.classList.contains('twitch-filter-date') &&
+            list.firstElementChild.nextElementSibling?.dataset.day !== list.firstElementChild.dataset.day) {
+            list.firstElementChild.remove();
         }
 
         if (wasNearBottom) {
             list.scrollTop = list.scrollHeight;
+        }
+    }
+
+    dayKey(time) {
+        const date = new Date(time);
+        return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    }
+
+    // "Today", "Yesterday" or the date
+    formatDay(time) {
+        const now = new Date();
+        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        const key = this.dayKey(time);
+        if (key === this.dayKey(now)) return this.t.today;
+        if (key === this.dayKey(yesterday)) return this.t.yesterday;
+        const date = new Date(time);
+        return date.toLocaleDateString(this.currentLanguage, {
+            day: 'numeric',
+            month: 'long',
+            year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric'
+        });
+    }
+
+    // --- Export ------------------------------------------------------------------
+    // The messages shown in the filtered chat: as text to the clipboard, or as a
+    // .txt / .csv file
+
+    setupExportButton() {
+        const button = this.customChatContainer.querySelector('.twitch-export-filtered');
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.exportMenu) {
+                this.closeExportMenu();
+                return;
+            }
+            this.showExportMenu(button);
+        });
+    }
+
+    showExportMenu(anchor) {
+        const t = this.t;
+        const menu = document.createElement('div');
+        menu.className = 'twitch-filter-menu';
+        menu.setAttribute('role', 'menu');
+
+        const actions = [
+            [t.copyText, () => this.copyExport(anchor)],
+            [t.saveTxt, () => this.downloadExport('txt')],
+            [t.saveCsv, () => this.downloadExport('csv')]
+        ];
+        actions.forEach(([label, action]) => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.setAttribute('role', 'menuitem');
+            item.textContent = label;
+            item.disabled = !this.filteredMessages.length;
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeExportMenu();
+                action();
+            });
+            menu.appendChild(item);
+        });
+        if (!this.filteredMessages.length) {
+            const hint = document.createElement('div');
+            hint.className = 'twitch-filter-menu-hint';
+            hint.textContent = t.nothingToExport;
+            menu.appendChild(hint);
+        }
+
+        document.body.appendChild(menu);
+        const anchorRect = anchor.getBoundingClientRect();
+        const menuRect = menu.getBoundingClientRect();
+        menu.style.left = `${Math.max(4, Math.min(anchorRect.right - menuRect.width, window.innerWidth - menuRect.width - 4))}px`;
+        menu.style.top = `${anchorRect.bottom + 4}px`;
+        menu.querySelector('button:not(:disabled)')?.focus();
+
+        const onOutside = (e) => {
+            if (!menu.contains(e.target) && !anchor.contains(e.target)) this.closeExportMenu();
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') {
+                this.closeExportMenu();
+                anchor.focus();
+            }
+        };
+        document.addEventListener('mousedown', onOutside, true);
+        document.addEventListener('keydown', onKey, true);
+        this.exportMenu = {
+            menu,
+            cleanup: () => {
+                document.removeEventListener('mousedown', onOutside, true);
+                document.removeEventListener('keydown', onKey, true);
+            }
+        };
+    }
+
+    closeExportMenu() {
+        if (!this.exportMenu) return;
+        this.exportMenu.menu.remove();
+        this.exportMenu.cleanup();
+        this.exportMenu = null;
+    }
+
+    // Time of a message for export: the video time in a VOD, otherwise the date
+    // and time it arrived
+    exportTime(msg) {
+        if (msg.timestamp) return msg.timestamp;
+        const date = new Date(msg.receivedAt);
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+            `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    // Link to the stream at the top of the export: the recording on a VOD page,
+    // otherwise the channel (without the query string and the moderator view)
+    streamUrl() {
+        if (/^\/videos\//i.test(location.pathname)) return `${location.origin}${location.pathname}`;
+        if (this.channel) return `https://www.twitch.tv/${this.channel}`;
+        return `${location.origin}${location.pathname}`;
+    }
+
+    exportText() {
+        const lines = this.filteredMessages
+            .map(msg => `[${this.exportTime(msg)}] ${msg.name || msg.login}: ${msg.text}`);
+        return [this.streamUrl(), '', ...lines].join('\n');
+    }
+
+    exportCsv() {
+        // Quotes around every field; formulas are not run when opened in a
+        // spreadsheet (a leading =, +, - or @ is escaped)
+        const field = value => {
+            let text = String(value ?? '');
+            if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+            return `"${text.replace(/"/g, '""')}"`;
+        };
+        // The stream link first, then the table
+        const rows = [['stream', this.streamUrl()], ['time', 'login', 'name', 'message']];
+        this.filteredMessages.forEach(msg => rows.push([this.exportTime(msg), msg.login, msg.name, msg.text]));
+        // BOM: Excel opens the file as UTF-8
+        return '\ufeff' + rows.map(row => row.map(field).join(',')).join('\r\n');
+    }
+
+    async copyExport(anchor) {
+        try {
+            await navigator.clipboard.writeText(this.exportText());
+        } catch (error) {
+            return;
+        }
+        // Short confirmation in the button tooltip
+        this.setButtonLabel(anchor, this.t.copied);
+        setTimeout(() => this.setButtonLabel(anchor, this.t.exportChat), 1500);
+    }
+
+    downloadExport(format) {
+        const content = format === 'csv' ? this.exportCsv() : this.exportText();
+        const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const date = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const stamp = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}_${pad(date.getHours())}-${pad(date.getMinutes())}`;
+        link.href = url;
+        link.download = `chat_${this.channel || 'twitch'}_${stamp}.${format}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // --- Auto-collapse -------------------------------------------------------------
+    // With the setting on, the filtered chat shrinks to its header when there are
+    // no matching messages for a while and expands with the next one. A click on
+    // the collapsed header expands it
+
+    setupCollapse() {
+        this.customChatContainer.querySelector('.twitch-filter-header').addEventListener('click', (e) => {
+            if (!this.dualContainer.classList.contains('filtered-collapsed') || e.target.closest('button')) return;
+            this.lastMatchAt = Date.now();
+            this.updateCollapse();
+        });
+    }
+
+    updateCollapse() {
+        if (!this.dualContainer) return;
+        clearTimeout(this.collapseTimer);
+        this.collapseTimer = null;
+
+        const enabled = Boolean(this.state && this.state.autoCollapse);
+        const idle = Date.now() - this.lastMatchAt;
+        const collapsed = enabled && idle >= AUTO_COLLAPSE_DELAY;
+        const header = this.customChatContainer.querySelector('.twitch-filter-header');
+        const wasCollapsed = this.dualContainer.classList.contains('filtered-collapsed');
+
+        this.dualContainer.classList.toggle('filtered-collapsed', collapsed);
+        header.title = collapsed ? this.t.expandChat : '';
+        if (wasCollapsed && !collapsed) this.scrollToBottom(true);
+
+        // Collapse when the quiet time runs out
+        if (enabled && !collapsed) {
+            this.collapseTimer = setTimeout(() => this.updateCollapse(), AUTO_COLLAPSE_DELAY - idle);
         }
     }
 
@@ -1417,52 +2579,39 @@ class TwitchChatFilter {
     }
 
     // A message is shown if it matches at least one "show" rule and no "hide" rule
-    shouldShowMessage(login, messageElement, text) {
+    shouldShowMessage(login, badges, text) {
+        return this.evaluateMessage(login, badges, text).show;
+    }
+
+    // A message is shown if it matches at least one "show" rule and no "hide"
+    // rule. matched: the rules that matched it (for counters and notifications)
+    evaluateMessage(login, badges, text) {
         const name = login.toLowerCase();
+        const ownLogin = this.getOwnLogin();
+        const message = { login: name, text: text.toLowerCase(), raw: text, badges, ownLogin };
+        const excluded = this.excludeRules.filter(rule => rule.test(message));
+        const included = this.includeRules.filter(rule => rule.test(message));
+        const matched = [...excluded, ...included];
 
         // The user's own messages are always shown
-        const ownLogin = this.getOwnLogin();
-        if (ownLogin && name === ownLogin) return true;
-
+        if (ownLogin && name === ownLogin) return { show: true, own: true, matched: [], included: [] };
         // With the filter off everything is shown
-        if (!this.isFilterEnabled) return true;
+        if (!this.isFilterEnabled) return { show: true, matched: [], included: [] };
 
-        const message = { login: name, text: text.toLowerCase(), element: messageElement, badges: null };
-        if (this.excludeRules.some(rule => this.ruleMatches(rule, message))) return false;
-        return this.includeRules.some(rule => this.ruleMatches(rule, message));
+        const show = !excluded.length && included.length > 0;
+        return { show, matched, included: show ? included : [] };
     }
 
-    ruleMatches(rule, message) {
-        switch (rule.type) {
-            case 'user':
-                return message.login === rule.match;
-            case 'keyword':
-                return message.text.includes(rule.match);
-            case 'role': {
-                const def = ROLE_BADGES[rule.value];
-                if (def.logins && def.logins.includes(message.login)) return true;
-                return this.getBadges(message).some(badge =>
-                    def.ids.some(id => badge.src.includes(id)) || def.names.test(badge.name));
-            }
-            case 'badge':
-                return this.getBadges(message).some(badge => badge.name.toLowerCase().includes(rule.match));
-        }
-        return false;
-    }
-
-    // Badges of the message author: image URL and name. Parsed once per message
-    // and only when there are badge rules
-    getBadges(message) {
-        if (!message.badges) {
-            message.badges = Array.from(
-                message.element.querySelectorAll('.chat-badge, [data-a-target="chat-badge"] img, img[src*="/badges/"]'),
-                badge => ({
-                    src: badge.getAttribute('src') || '',
-                    name: badge.getAttribute('alt') || badge.getAttribute('aria-label') || ''
-                })
-            );
-        }
-        return message.badges;
+    // Badges of the message author: image URL and name (also saved in the
+    // history, so role and badge rules work for saved messages)
+    getBadges(messageElement) {
+        return Array.from(
+            messageElement.querySelectorAll('.chat-badge, [data-a-target="chat-badge"] img, img[src*="/badges/"]'),
+            badge => ({
+                src: badge.getAttribute('src') || '',
+                name: badge.getAttribute('alt') || badge.getAttribute('aria-label') || ''
+            })
+        );
     }
 
     // Login of the current user from the Twitch cookie
@@ -1583,38 +2732,73 @@ class TwitchChatFilter {
         const text = timeElement ? timeElement.textContent.trim() : '';
         return text || null;
     }
-}
+};
 
 // Filter startup. The pop-out chat window (/popout/…/chat) and the embedded
 // chat (/embed/…) are not split in two: they are just a chat
-const isStandaloneChat = /^\/(popout|embed)\//i.test(window.location.pathname);
+var isStandaloneChat = /^\/(popout|embed)\//i.test(window.location.pathname);
+
+// After an extension update the new copy of the script is injected into the
+// open tab (background.js) while the old one keeps running without a
+// connection to the extension: settings changes no longer reach it. The new
+// copy tells the old one to stop with a DOM event (it reaches every copy)
+var TAKEOVER_EVENT = 'twitch-chat-filter-takeover';
 
 if (window.location.hostname.includes('twitch.tv') && !isStandaloneChat) {
+    document.dispatchEvent(new CustomEvent(TAKEOVER_EVENT));
+
     const filter = new TwitchChatFilter();
+    let stopped = false;
+
+    const stop = () => {
+        if (stopped) return;
+        stopped = true;
+        clearInterval(watchTimer);
+        document.removeEventListener(TAKEOVER_EVENT, stop);
+        filter.destroy();
+    };
+    document.addEventListener(TAKEOVER_EVENT, stop);
 
     let currentUrl = window.location.href;
-    setInterval(() => {
+    const watchTimer = setInterval(() => {
+        // The extension was updated, reloaded or removed: this copy is dead
+        let alive = false;
+        try {
+            alive = Boolean(chrome.runtime && chrome.runtime.id);
+        } catch (error) {
+            // Accessing an invalidated context throws
+        }
+        if (!alive) {
+            stop();
+            return;
+        }
+
         if (window.location.href !== currentUrl) {
             currentUrl = window.location.href;
             filter.cleanup();
             // Another preset may apply on another channel
             if (filter.state) filter.setState(filter.state);
             setTimeout(() => {
-                filter.waitForChat();
+                if (!stopped) filter.waitForChat();
             }, 3000);
             return;
         }
 
-        // Self-healing: if Twitch remounted the chat and our container got detached,
-        // recreate it
-        if (filter.chatContainer && !filter.chatContainer.isConnected) {
+        // Self-healing: if Twitch remounted the chat, or our container was removed
+        // (e.g. by an old copy of the script), recreate it
+        if ((filter.chatContainer && !filter.chatContainer.isConnected) ||
+            (filter.dualContainer && !filter.dualContainer.isConnected)) {
             filter.cleanup();
             filter.waitForChat();
+            return;
         }
+
+        // On VOD pages the channel appears in the page later than the chat
+        filter.refreshChannel();
     }, 1000);
 
     setTimeout(() => {
-        if (!filter.chatContainer) {
+        if (!stopped && !filter.chatContainer) {
             filter.waitForChat();
         }
     }, 5000);

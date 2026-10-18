@@ -81,6 +81,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         badge: 'M6 1h8l-2.5 6h-3L6 1Zm4 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z',
         keyword: 'M3 3h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H8l-4 4v-4H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm3 4v2h8V7H6Zm0 3v1.5h5V10H6Z'
     };
+    const BELL_ICON = '<svg viewBox="0 0 20 20" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M10 2a5 5 0 0 0-5 5v3.6L3.3 13.3A1 1 0 0 0 4 15h12a1 1 0 0 0 .7-1.7L15 10.6V7a5 5 0 0 0-5-5Zm-2 14a2 2 0 0 0 4 0H8Z"/></svg>';
+    const REMOVE_ICON = '<svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="m5.4 4 4.6 4.6L14.6 4 16 5.4 11.4 10l4.6 4.6-1.4 1.4-4.6-4.6L5.4 16 4 14.6 8.6 10 4 5.4 5.4 4Z"/></svg>';
+    // Kinds of an extra condition: the type, and the mode for keywords
+    const CONDITION_KINDS = ['role', 'user', 'badge', 'keyword:contains', 'keyword:word', 'keyword:regex', 'keyword:mention'];
     const typeIcon = (type, size) =>
         `<svg viewBox="0 0 20 20" width="${size}" height="${size}" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="${TYPE_ICONS[type]}"/></svg>`;
 
@@ -164,6 +168,15 @@ document.addEventListener('DOMContentLoaded', async function () {
             timestampLabel: 'Message time',
             timestampHint: 'In the filtered chat, full time on hover',
             timestampFormats: { short: 'Short', full: 'With seconds', off: 'Hidden' },
+            filteredChatGroup: 'Filtered chat',
+            historyLabel: 'Keep history',
+            historyHint: `Messages stay after reloading the page, up to ${HISTORY_LIMIT} per channel. Stored only in this browser`,
+            clearHistory: 'Clear',
+            historyCleared: 'History cleared',
+            autoCollapseLabel: 'Collapse when quiet',
+            autoCollapseHint: 'Shrinks to the header after 5 minutes without matching messages',
+            hideNamesLabel: 'Hide usernames',
+            hideNamesHint: 'Blurs names and mentions in the filtered chat for screen capture',
             systemLanguage: 'System',
             systemLanguageHint: name => `Browser language: ${name}`,
             about: 'About',
@@ -188,6 +201,56 @@ document.addEventListener('DOMContentLoaded', async function () {
                 badge: 'Part of the badge name as Twitch shows it on hover',
                 keyword: 'Part of the message text, case does not matter'
             },
+            modeLabel: 'Match',
+            modes: { contains: 'Contains', word: 'Whole word', regex: 'Regex', mention: 'Mention' },
+            mentionLabel: 'Mentioned user',
+            mentionPlaceholder: 'empty — you',
+            mentionHint: 'Messages with @name or the name as a word. Leave empty to catch mentions of you',
+            regexLabel: 'Regular expression',
+            regexPlaceholder: '^!(sr|play)\\b',
+            regexHint: 'JavaScript syntax, case does not matter. Checked against the message text with emote names',
+            wordHint: 'The word on its own, not a part of a longer word',
+            invalidRegex: 'Not a valid regular expression',
+            invalidMention: 'Not a valid username',
+            you: 'you',
+            conditionsLabel: 'And also (optional)',
+            conditionsHint: 'The rule works only when every condition matches, e.g. Moderator and mention of you',
+            addCondition: 'Add a condition',
+            removeCondition: 'Remove the condition',
+            conditionKinds: {
+                role: 'Role', user: 'Username', badge: 'Badge',
+                'keyword:contains': 'Text contains', 'keyword:word': 'Whole word',
+                'keyword:regex': 'Regex', 'keyword:mention': 'Mention'
+            },
+            conditionRequired: 'Fill in the condition or remove it',
+            and: 'and',
+            notifyLabel: 'Notify about new messages',
+            notifyHint: 'Used when Settings → Notify about is set to “Marked rules”',
+            notifyTag: 'Notifications are on',
+            wordTag: 'word',
+            regexTag: 'regex',
+            stats: (n, when) => `${n} ${n === 1 ? 'match' : 'matches'} · ${when}`,
+            notifyGroup: 'Notifications',
+            notifySoundLabel: 'Sound',
+            notifySoundHint: 'Twitch must be clicked once after opening for the browser to allow sound',
+            notifyScopeLabel: 'Notify about',
+            notifyScopes: { all: 'All messages', rules: 'Marked rules' },
+            notifyScopeHints: {
+                all: 'Every new message of the filtered chat',
+                rules: 'Only rules with “Notify about new messages” in the rule editor'
+            },
+            notifyNoRules: 'No rule has “Notify about new messages” — nothing will be notified',
+            notifyDesktopLabel: 'Desktop notifications',
+            notifyDesktopHint: 'When the Twitch tab is in the background or the browser is minimized. Asks for permission',
+            permissionDenied: 'Notifications are not allowed',
+            testNotify: 'Test',
+            testTitle: 'Chat Filter for Twitch',
+            testMessage: 'Notifications work. Messages of rules with “Notify” will look like this',
+            testSent: 'Sent. Nothing appeared? Turn on notifications for Chrome in the system settings and turn off Do not disturb / Focus',
+            notifyBlocked: 'Notifications of the extension are turned off in Chrome settings',
+            notifyFailed: 'Could not show a notification',
+            sendStatusLabel: 'Send status',
+            sendStatusHint: 'The message input outline: gray — sending, green — in the chat, orange — not confirmed',
             rolesLabel: 'Roles',
             roleLabel: 'Role',
             noteLabel: 'Note (optional)',
@@ -282,6 +345,15 @@ document.addEventListener('DOMContentLoaded', async function () {
             timestampLabel: 'Время сообщений',
             timestampHint: 'В фильтрованном чате, полное — при наведении',
             timestampFormats: { short: 'Короткое', full: 'С секундами', off: 'Не показывать' },
+            filteredChatGroup: 'Фильтрованный чат',
+            historyLabel: 'Сохранять историю',
+            historyHint: `Сообщения остаются после перезагрузки страницы, до ${HISTORY_LIMIT} на канал. Хранятся только в этом браузере`,
+            clearHistory: 'Очистить',
+            historyCleared: 'История очищена',
+            autoCollapseLabel: 'Сворачивать без сообщений',
+            autoCollapseHint: 'Сжимается до заголовка через 5 минут без подходящих сообщений',
+            hideNamesLabel: 'Скрывать ники',
+            hideNamesHint: 'Размывает ники и упоминания в фильтрованном чате для записи экрана',
             systemLanguage: 'Как в системе',
             systemLanguageHint: name => `Язык браузера: ${name}`,
             about: 'О расширении',
@@ -306,6 +378,56 @@ document.addEventListener('DOMContentLoaded', async function () {
                 badge: 'Часть названия значка, как его показывает Twitch при наведении',
                 keyword: 'Часть текста сообщения, регистр не важен'
             },
+            modeLabel: 'Совпадение',
+            modes: { contains: 'Содержит', word: 'Целое слово', regex: 'Регулярка', mention: 'Упоминание' },
+            mentionLabel: 'Кого упомянули',
+            mentionPlaceholder: 'пусто — вас',
+            mentionHint: 'Сообщения с @ником или ником отдельным словом. Оставьте пустым, чтобы ловить упоминания вас',
+            regexLabel: 'Регулярное выражение',
+            regexPlaceholder: '^!(sr|play)\\b',
+            regexHint: 'Синтаксис JavaScript, регистр не важен. Проверяется текст сообщения вместе с названиями смайлов',
+            wordHint: 'Слово целиком, а не часть более длинного слова',
+            invalidRegex: 'Некорректное регулярное выражение',
+            invalidMention: 'Некорректный ник',
+            you: 'вы',
+            conditionsLabel: 'И ещё (необязательно)',
+            conditionsHint: 'Правило сработает, только если совпали все условия, например «Модератор» и упоминание вас',
+            addCondition: 'Добавить условие',
+            removeCondition: 'Убрать условие',
+            conditionKinds: {
+                role: 'Роль', user: 'Ник', badge: 'Значок',
+                'keyword:contains': 'Текст содержит', 'keyword:word': 'Целое слово',
+                'keyword:regex': 'Регулярка', 'keyword:mention': 'Упоминание'
+            },
+            conditionRequired: 'Заполните условие или уберите его',
+            and: 'и',
+            notifyLabel: 'Оповещать о новых сообщениях',
+            notifyHint: 'Работает, когда в Настройках → «Оповещать о» выбрано «Отмеченных правилах»',
+            notifyTag: 'Оповещения включены',
+            wordTag: 'слово',
+            regexTag: 'regex',
+            stats: (n, when) => `${n} ${pluralRu(n, 'совпадение', 'совпадения', 'совпадений')} · ${when}`,
+            notifyGroup: 'Оповещения',
+            notifySoundLabel: 'Звук',
+            notifySoundHint: 'После открытия Twitch нужно один раз кликнуть по странице, чтобы браузер разрешил звук',
+            notifyScopeLabel: 'Оповещать о',
+            notifyScopes: { all: 'Всех сообщениях', rules: 'Отмеченных правилах' },
+            notifyScopeHints: {
+                all: 'Каждое новое сообщение фильтрованного чата',
+                rules: 'Только правила с «Оповещать о новых сообщениях» в редакторе правила'
+            },
+            notifyNoRules: 'Ни у одного правила не отмечено «Оповещать о новых сообщениях» — оповещений не будет',
+            notifyDesktopLabel: 'Уведомления на рабочем столе',
+            notifyDesktopHint: 'Когда вкладка Twitch в фоне или браузер свёрнут. Запросит разрешение',
+            permissionDenied: 'Уведомления не разрешены',
+            testNotify: 'Проверить',
+            testTitle: 'Фильтр чата для Twitch',
+            testMessage: 'Уведомления работают. Так будут выглядеть сообщения правил с «Оповещать»',
+            testSent: 'Отправлено. Ничего не появилось? Включите уведомления для Chrome в настройках системы и выключите режим «Не беспокоить»',
+            notifyBlocked: 'Уведомления расширения выключены в настройках Chrome',
+            notifyFailed: 'Не удалось показать уведомление',
+            sendStatusLabel: 'Статус отправки',
+            sendStatusHint: 'Рамка поля ввода: серая — отправляется, зелёная — в чате, оранжевая — не подтверждено',
             rolesLabel: 'Роли',
             roleLabel: 'Роль',
             noteLabel: 'Заметка (необязательно)',
@@ -398,18 +520,36 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // --- Rule list ------------------------------------------------------------
 
+    // Text of a rule or a condition: role name, @mention, /regex/ or the value
     function ruleLabel(rule) {
-        return rule.type === 'role' ? t().roleNames[rule.value] : rule.value;
+        const tr = t();
+        if (rule.type === 'role') return tr.roleNames[rule.value];
+        if (rule.mode === 'mention') return `@${rule.value === MENTION_ME ? tr.you : rule.value}`;
+        if (rule.mode === 'regex') return `/${rule.value}/`;
+        return rule.value;
     }
 
-    function ruleKey(type, value) {
-        return `${type}:${value.toLowerCase()}`;
+    // extra: { mode, conditions } of the rule being checked
+    function ruleExists(type, value, exceptId, extra = {}) {
+        const candidate = FilterStore.normalizeRule({ type, value, mode: extra.mode, conditions: extra.conditions });
+        if (!candidate) return false;
+        const key = FilterStore.ruleKey(candidate);
+        return viewedPreset().rules.some(rule => rule.id !== exceptId && FilterStore.ruleKey(rule) === key);
     }
 
-    function ruleExists(type, value, exceptId) {
-        const key = ruleKey(type, value);
-        return viewedPreset().rules.some(rule => rule.id !== exceptId && ruleKey(rule.type, rule.value) === key);
+    // "5 min ago" for the match counters
+    function formatAgo(time) {
+        const seconds = Math.round((time - Date.now()) / 1000);
+        const format = new Intl.RelativeTimeFormat(uiLanguage(), { numeric: 'auto' });
+        const units = [['day', 86400], ['hour', 3600], ['minute', 60]];
+        for (const [unit, size] of units) {
+            if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+        }
+        return format.format(0, 'second');
     }
+
+    // Match counters of the rules (written by the content script)
+    let ruleStats = {};
 
     function normalizeQuery(value) {
         return value.trim().replace(/^@/, '').toLowerCase();
@@ -537,6 +677,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             row.appendChild(checkbox);
         }
 
+        row.dataset.mode = rule.mode;
+
         const chip = document.createElement('span');
         chip.className = 'type-chip';
         chip.dataset.type = rule.type;
@@ -570,7 +712,41 @@ document.addEventListener('DOMContentLoaded', async function () {
             badge.innerHTML = ICONS.role(ROLE_BADGES[rule.value].icon);
             valueLine.appendChild(badge);
         }
+        if (rule.mode === 'word' || rule.mode === 'regex') {
+            const tag = document.createElement('span');
+            tag.className = 'rule-tag';
+            tag.textContent = rule.mode === 'word' ? tr.wordTag : tr.regexTag;
+            valueLine.appendChild(tag);
+        }
+        if (rule.notify && rule.action === 'include' && state.notifyScope === 'rules') {
+            const bell = document.createElement('span');
+            bell.className = 'rule-bell';
+            bell.innerHTML = BELL_ICON;
+            bell.title = tr.notifyTag;
+            valueLine.appendChild(bell);
+        }
         main.appendChild(valueLine);
+
+        // "and Moderator, and @you" · "12 matches · 5 min ago"
+        const stats = ruleStats[rule.id];
+        if (rule.conditions.length || stats) {
+            const meta = document.createElement('div');
+            meta.className = 'rule-meta';
+            if (rule.conditions.length) {
+                const conditions = document.createElement('span');
+                conditions.className = 'rule-conditions';
+                conditions.textContent = rule.conditions.map(c => `${tr.and} ${ruleLabel(c)}`).join(', ');
+                conditions.title = conditions.textContent;
+                meta.appendChild(conditions);
+            }
+            if (stats) {
+                const counter = document.createElement('span');
+                counter.className = 'rule-stats';
+                counter.textContent = tr.stats(stats.count, formatAgo(stats.last));
+                meta.appendChild(counter);
+            }
+            main.appendChild(meta);
+        }
 
         if (rule.note) {
             const note = document.createElement('div');
@@ -1127,7 +1303,124 @@ document.addEventListener('DOMContentLoaded', async function () {
     // --- Rule editor ------------------------------------------------------------
 
     // ruleId: the rule being edited (null for a new one)
-    const editor = { ruleId: null, type: 'user', action: 'include', roles: new Set() };
+    // mode: keyword match; conditions: [{ kind, value }] extra conditions (kind:
+    // see CONDITION_KINDS); notify: notifications for this rule
+    const editor = {
+        ruleId: null, type: 'user', action: 'include', roles: new Set(),
+        mode: 'contains', conditions: [], notify: false
+    };
+    const modeSeg = $('modeSeg');
+    const conditionList = $('conditionList');
+    const conditionError = $('conditionError');
+    const notifyInput = $('notifyInput');
+
+    const conditionKind = condition => condition.type === 'keyword' ? `keyword:${condition.mode}` : condition.type;
+
+    // Extra conditions of the editor as rule data (invalid ones are left out)
+    function editorConditions() {
+        return editor.conditions
+            .map(({ kind, value }) => {
+                const [type, mode] = kind.split(':');
+                return FilterStore.normalizeCondition({ type, mode, value });
+            })
+            .filter(Boolean);
+    }
+
+    function renderConditions() {
+        const tr = t();
+        conditionList.textContent = '';
+        editor.conditions.forEach((condition, index) => {
+            const row = document.createElement('div');
+            row.className = 'condition';
+
+            const and = document.createElement('span');
+            and.className = 'condition-and';
+            and.textContent = tr.and;
+
+            const kind = document.createElement('select');
+            kind.className = 'input';
+            kind.setAttribute('aria-label', tr.conditionsLabel);
+            CONDITION_KINDS.forEach(value => kind.add(new Option(tr.conditionKinds[value], value, false, value === condition.kind)));
+            kind.addEventListener('change', () => {
+                condition.kind = kind.value;
+                // A role needs a role; other kinds start empty
+                condition.value = kind.value === 'role' ? Object.keys(ROLE_BADGES)[0] : '';
+                conditionError.textContent = '';
+                renderConditions();
+            });
+
+            let valueControl;
+            if (condition.kind === 'role') {
+                valueControl = document.createElement('select');
+                valueControl.className = 'input condition-role';
+                Object.keys(ROLE_BADGES).forEach(role =>
+                    valueControl.add(new Option(tr.roleNames[role], role, false, role === condition.value)));
+                valueControl.addEventListener('change', () => { condition.value = valueControl.value; });
+            } else {
+                valueControl = document.createElement('input');
+                valueControl.type = 'text';
+                valueControl.className = 'input';
+                valueControl.autocomplete = 'off';
+                valueControl.spellcheck = false;
+                valueControl.maxLength = 100;
+                valueControl.value = condition.value;
+                valueControl.placeholder = condition.kind === 'keyword:mention'
+                    ? tr.mentionPlaceholder
+                    : condition.kind === 'keyword:regex' ? tr.regexPlaceholder : (tr.valuePlaceholders[condition.kind.split(':')[0]] || '');
+                valueControl.addEventListener('input', () => {
+                    condition.value = valueControl.value;
+                    conditionError.textContent = '';
+                });
+            }
+            valueControl.setAttribute('aria-label', tr.conditionKinds[condition.kind]);
+
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'icon-btn';
+            remove.innerHTML = REMOVE_ICON;
+            setLabel(remove, tr.removeCondition);
+            remove.addEventListener('click', () => {
+                editor.conditions.splice(index, 1);
+                conditionError.textContent = '';
+                renderConditions();
+                renderEditor();
+            });
+
+            row.append(and, kind, valueControl, remove);
+            conditionList.appendChild(row);
+        });
+
+        const addBtn = $('addConditionBtn');
+        addBtn.hidden = editor.conditions.length >= MAX_CONDITIONS;
+        addBtn.innerHTML = ICONS.plus;
+        addBtn.append(tr.addCondition);
+    }
+
+    $('addConditionBtn').addEventListener('click', function () {
+        if (editor.conditions.length >= MAX_CONDITIONS) return;
+        // The most common pair: a role and a mention of you
+        const used = new Set(editor.conditions.map(c => c.kind));
+        const kind = editor.type !== 'keyword' && !used.has('keyword:mention') ? 'keyword:mention' : 'role';
+        editor.conditions.push({ kind, value: kind === 'role' ? Object.keys(ROLE_BADGES)[0] : '' });
+        renderConditions();
+        renderEditor();
+        const inputs = conditionList.querySelectorAll('.condition');
+        inputs[inputs.length - 1].querySelector('select').focus();
+    });
+
+    notifyInput.addEventListener('change', function () {
+        editor.notify = notifyInput.checked;
+    });
+
+    modeSeg.addEventListener('click', function (e) {
+        const button = e.target.closest('[data-mode]');
+        if (!button) return;
+        editor.mode = button.dataset.mode;
+        valueError.textContent = '';
+        valueInput.removeAttribute('aria-invalid');
+        renderEditor();
+        valueInput.focus();
+    });
 
     function createRolePicker() {
         Object.keys(ROLE_BADGES).forEach(roleId => {
@@ -1162,13 +1455,20 @@ document.addEventListener('DOMContentLoaded', async function () {
         editor.type = source ? source.type : (ui.tab === 'all' ? 'user' : ui.tab);
         editor.action = source ? source.action : 'include';
         editor.roles = new Set(source && source.type === 'role' ? [source.value] : []);
+        editor.mode = source ? source.mode : 'contains';
+        editor.conditions = source ? source.conditions.map(c => ({ kind: conditionKind(c), value: c.value })) : [];
+        editor.notify = Boolean(source && source.notify);
+        notifyInput.checked = editor.notify;
+        conditionError.textContent = '';
 
-        valueInput.value = source && source.type !== 'role' ? source.value : '';
+        // A mention of you is shown as an empty field
+        valueInput.value = source && source.type !== 'role' && source.value !== MENTION_ME ? source.value : '';
         noteInput.value = source ? source.note : '';
         valueError.textContent = '';
         roleError.textContent = '';
         valueInput.removeAttribute('aria-invalid');
 
+        renderConditions();
         renderEditor();
         openSheet(ruleSheet, rule ? ruleList.querySelector(`[data-id="${rule.id}"] .icon-btn`) : createBtn);
         if (editor.type !== 'role') valueInput.focus();
@@ -1194,11 +1494,29 @@ document.addEventListener('DOMContentLoaded', async function () {
         valueField.hidden = isRole;
         roleField.hidden = !isRole;
 
+        // Keyword match mode
+        const isKeyword = editor.type === 'keyword';
+        $('modeField').hidden = !isKeyword;
+        modeSeg.querySelectorAll('[data-mode]').forEach(button => {
+            button.textContent = tr.modes[button.dataset.mode];
+            button.setAttribute('aria-checked', String(button.dataset.mode === editor.mode));
+        });
+        const mode = isKeyword ? editor.mode : 'contains';
+
+        // Notifications only make sense for rules that show messages
+        $('notifyField').hidden = editor.action !== 'include' || state.notifyScope !== 'rules';
+
         if (!isRole) {
-            $('valueLabel').textContent = tr.valueLabels[editor.type];
-            valueInput.placeholder = tr.valuePlaceholders[editor.type];
+            const modeText = {
+                mention: [tr.mentionLabel, tr.mentionPlaceholder, tr.mentionHint],
+                regex: [tr.regexLabel, tr.regexPlaceholder, tr.regexHint],
+                word: [tr.valueLabels.keyword, tr.valuePlaceholders.keyword, tr.wordHint]
+            }[mode];
+            $('valueLabel').textContent = modeText ? modeText[0] : tr.valueLabels[editor.type];
+            valueInput.placeholder = modeText ? modeText[1] : tr.valuePlaceholders[editor.type];
             // Several usernames at once only when creating
-            $('valueHint').textContent = editor.type === 'user' && isEdit ? '' : tr.valueHints[editor.type];
+            $('valueHint').textContent = modeText ? modeText[2]
+                : editor.type === 'user' && isEdit ? '' : tr.valueHints[editor.type];
             if (editor.type === 'badge') {
                 valueInput.setAttribute('list', 'badgeSuggestions');
             } else {
@@ -1210,8 +1528,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const roleId = button.dataset.role;
                 button.querySelector('.role-name').textContent = tr.roleNames[roleId];
                 button.setAttribute('aria-pressed', String(editor.roles.has(roleId)));
-                // Roles that already have a rule cannot be selected
-                const exists = ruleExists('role', roleId, editor.ruleId);
+                // Roles that already have the same rule cannot be selected
+                const exists = ruleExists('role', roleId, editor.ruleId, { conditions: editorConditions() });
                 button.disabled = exists;
                 button.title = exists ? tr.duplicate : '';
             });
@@ -1254,8 +1572,24 @@ document.addEventListener('DOMContentLoaded', async function () {
         const tr = t();
         const isEdit = Boolean(editor.ruleId);
 
+        // Extra conditions: each must be filled in and valid
+        conditionError.textContent = '';
+        for (const condition of editor.conditions) {
+            const [type, mode] = condition.kind.split(':');
+            if (!String(condition.value).trim() && mode !== 'mention') {
+                conditionError.textContent = tr.conditionRequired;
+                return null;
+            }
+            if (!FilterStore.normalizeCondition({ type, mode, value: condition.value })) {
+                conditionError.textContent = mode === 'regex' ? tr.invalidRegex
+                    : mode === 'mention' || type === 'user' ? tr.invalidMention : tr.conditionRequired;
+                return null;
+            }
+        }
+        const extra = { mode: editor.type === 'keyword' ? editor.mode : 'contains', conditions: editorConditions() };
+
         if (editor.type === 'role') {
-            const roles = [...editor.roles].filter(role => !ruleExists('role', role, editor.ruleId));
+            const roles = [...editor.roles].filter(role => !ruleExists('role', role, editor.ruleId, extra));
             if (!roles.length) {
                 roleError.textContent = tr.pickRole;
                 return null;
@@ -1264,8 +1598,24 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         const raw = valueInput.value.trim();
+        if (editor.type === 'keyword' && editor.mode === 'mention') {
+            const value = raw || MENTION_ME;
+            if (!FilterStore.normalizeCondition({ type: 'keyword', mode: 'mention', value })) {
+                showValueError(tr.invalidMention);
+                return null;
+            }
+            if (ruleExists('keyword', value, editor.ruleId, extra)) {
+                showValueError(tr.duplicate);
+                return null;
+            }
+            return [value];
+        }
         if (!raw) {
             showValueError(tr.required);
+            return null;
+        }
+        if (editor.type === 'keyword' && editor.mode === 'regex' && !FilterStore.compileRegex(raw)) {
+            showValueError(tr.invalidRegex);
             return null;
         }
 
@@ -1278,7 +1628,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 showValueError(tr.invalidUser(invalid));
                 return null;
             }
-            const fresh = names.filter(name => !ruleExists('user', name, editor.ruleId));
+            const fresh = names.filter(name => !ruleExists('user', name, editor.ruleId, extra));
             if (!fresh.length) {
                 showValueError(tr.duplicate);
                 return null;
@@ -1286,7 +1636,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             return fresh;
         }
 
-        if (ruleExists(editor.type, raw, editor.ruleId)) {
+        if (ruleExists(editor.type, raw, editor.ruleId, extra)) {
             showValueError(tr.duplicate);
             return null;
         }
@@ -1299,6 +1649,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!values) return;
 
         const note = noteInput.value.trim();
+        const mode = editor.type === 'keyword' ? editor.mode : 'contains';
+        const conditions = editorConditions();
+        const notify = editor.action === 'include' && editor.notify;
         let focusId;
 
         if (editor.ruleId) {
@@ -1310,6 +1663,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                     value: values[0],
                     action: editor.action,
                     note,
+                    mode,
+                    conditions,
+                    notify,
                     updated: Date.now()
                 }));
                 focusId = rule.id;
@@ -1319,7 +1675,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                 type: editor.type,
                 value,
                 action: editor.action,
-                note
+                note,
+                mode,
+                conditions,
+                notify
             })));
             focusId = created[0] && created[0].id;
 
@@ -1343,6 +1702,9 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function showSettings(show) {
         closeMenus();
+        // Rules may have changed since the last full render (the warning about
+        // notifications depends on them)
+        if (show) renderSettings();
         mainView.hidden = show;
         settingsView.hidden = !show;
         (show ? backBtn : settingsBtn).focus();
@@ -1356,6 +1718,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         const resolved = LANGUAGES.find(lang => lang.code === uiLanguage()) || LANGUAGES[0];
         $('languageName').textContent = state.language === SYSTEM_LANGUAGE ? tr.systemLanguage : resolved.name;
         $('timestampName').textContent = tr.timestampFormats[state.timestampFormat];
+        SETTING_SWITCHES.forEach(([id, key]) => $(id).setAttribute('aria-checked', String(state[key])));
+        $('clearHistoryBtn').hidden = !state.historyEnabled;
+        $('testNotifyBtn').hidden = !state.notifyDesktop;
+        $('notifyScopeName').textContent = tr.notifyScopes[state.notifyScope];
+        // Notifications are on, but no rule is marked for them
+        const noMarked = (state.notifyDesktop || state.notifySound) && state.notifyScope === 'rules' &&
+            !state.presets.some(preset => preset.rules.some(rule => rule.enabled && rule.notify && rule.action === 'include'));
+        $('notifyWarning').textContent = noMarked ? tr.notifyNoRules : tr.notifyScopeHints[state.notifyScope];
+        $('notifyWarning').classList.toggle('is-warning', noMarked);
         $('versionValue').textContent = tr.version(chrome.runtime.getManifest().version);
         setLabel(settingsBtn, tr.settings);
         setLabel(backBtn, tr.back);
@@ -1458,6 +1829,82 @@ document.addEventListener('DOMContentLoaded', async function () {
         })), state.timestampFormat, value => {
             state.timestampFormat = value;
         });
+    });
+
+    // On/off settings of the filtered chat
+    const SETTING_SWITCHES = [
+        ['historySwitch', 'historyEnabled'],
+        ['autoCollapseSwitch', 'autoCollapse'],
+        ['hideNamesSwitch', 'hideNames'],
+        ['notifySoundSwitch', 'notifySound'],
+        ['notifyDesktopSwitch', 'notifyDesktop'],
+        ['sendStatusSwitch', 'sendStatus']
+    ];
+    SETTING_SWITCHES.forEach(([id, key]) => {
+        $(id).addEventListener('click', async function () {
+            // Desktop notifications need the optional permission, asked on the click
+            if (key === 'notifyDesktop' && !state.notifyDesktop) {
+                let granted = false;
+                try {
+                    granted = await chrome.permissions.request({ permissions: ['notifications'] });
+                } catch (error) {
+                    // The permission cannot be requested
+                }
+                if (!granted) {
+                    showToast(t().permissionDenied);
+                    return;
+                }
+            }
+            state[key] = !state[key];
+            persist();
+            render();
+        });
+    });
+
+    $('notifyScopeBtn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        const tr = t();
+        openChoiceMenu($('notifyScopeBtn'), NOTIFY_SCOPES.map(scope => ({
+            value: scope,
+            label: tr.notifyScopes[scope],
+            hint: tr.notifyScopeHints[scope]
+        })), state.notifyScope, value => {
+            state.notifyScope = value;
+        });
+    });
+
+    // A test notification through the same path as the real ones (background.js):
+    // shows whether the problem is in the extension or in the system settings
+    $('testNotifyBtn').addEventListener('click', async function () {
+        const tr = t();
+        let response = null;
+        try {
+            response = await chrome.runtime.sendMessage({ type: 'notify', title: tr.testTitle, message: tr.testMessage });
+        } catch (error) {
+            // No response from background.js
+        }
+        if (response && response.ok) {
+            showToast(tr.testSent);
+        } else if (response && response.reason === 'blocked') {
+            showToast(tr.notifyBlocked);
+        } else if (response && response.reason === 'permission') {
+            showToast(tr.permissionDenied);
+        } else {
+            showToast(tr.notifyFailed);
+        }
+    });
+
+    // The history is in the IndexedDB of background.js; open Twitch tabs learn
+    // about the clearing from historyClearedAt
+    $('clearHistoryBtn').addEventListener('click', async function () {
+        try {
+            const response = await chrome.runtime.sendMessage({ type: 'history:clear' });
+            if (!response || !response.ok) throw new Error('not cleared');
+            await chrome.storage.local.set({ historyClearedAt: Date.now() });
+            showToast(t().historyCleared);
+        } catch (error) {
+            showToast(t().saveError);
+        }
     });
 
     // --- Sheets, menus, keyboard ----------------------------------------------
@@ -1633,10 +2080,47 @@ document.addEventListener('DOMContentLoaded', async function () {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         currentChannel = FilterStore.channelFromUrl(tab && tab.url || '');
+        // On VOD pages the URL has no channel: ask the content script, which finds
+        // it in the page
+        if (!currentChannel && tab && tab.id !== undefined) {
+            const response = await chrome.tabs.sendMessage(tab.id, { type: 'getChannel' }).catch(() => null);
+            if (response && response.channel) currentChannel = response.channel;
+        }
     } catch (error) {
         // No access to the tab: show the default preset
     }
     ui.viewPresetId = effectivePreset().id;
+
+    try {
+        ({ ruleStats = {} } = await chrome.storage.local.get('ruleStats'));
+    } catch (error) {
+        // Counters are not shown
+    }
+
+    // Rules can also change outside the popup (quick add from the Twitch chat):
+    // load them again. The popup's own saves come back here too and change nothing
+    let reloadTimer = null;
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName === 'local' && changes.ruleStats) {
+            ruleStats = changes.ruleStats.newValue || {};
+            renderList();
+            return;
+        }
+        if (areaName !== 'sync') return;
+        clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(async () => {
+            await saveQueue;
+            let fresh;
+            try {
+                ({ state: fresh } = await FilterStore.load());
+            } catch (error) {
+                return;
+            }
+            if (JSON.stringify(fresh) === JSON.stringify(state)) return;
+            state = fresh;
+            render();
+        }, 200);
+    });
 
     render();
     searchInput.focus();

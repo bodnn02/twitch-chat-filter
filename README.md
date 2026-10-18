@@ -22,9 +22,13 @@ A Chrome extension that adds a second, filtered chat to Twitch. It shows only th
 ## Features
 
 - **Two chats in one column.** The filtered chat sits above the original one. Drag the divider to resize, hide either chat, or open it in a separate window.
-- **Rules** by user, role (streamer, moderators, VIPs, verified, subscribers, Twitch staff, chatbots), badge name or keyword. Each rule either shows (+) or hides (−) messages, and hide rules win. Rules can be turned off without deleting them.
+- **Rules** by user, role (streamer, moderators, VIPs, verified, subscribers, Twitch staff, chatbots), badge name or keyword. Keywords match a part of the text, a whole word, a regular expression or a mention of you. Add "and also" conditions, e.g. Moderator and a mention of you. Each rule either shows (+) or hides (−) messages, and hide rules win. Rules can be turned off without deleting them, and show how many messages they matched.
+- **Notifications** about new messages of the filtered chat (or only of the rules you mark): a sound and/or a desktop notification.
+- **Quick add from the chat:** hover a message to show or hide its author.
 - **Presets.** Save sets of rules and bind a preset to channels, so it turns on automatically when you watch them. Presets can be copied to the clipboard and imported on another device.
 - **Works like the real chat.** Badges, emotes, user cards, the message menu and VOD timestamps work in the filtered chat. The leaderboard and pinned messages stay above it.
+- **History and export.** Matching messages stay after reloading the page, with date separators. Copy the filtered chat as text or save it as .txt / .csv.
+- **Comfort options.** Collapse the filtered chat when it is quiet; blur usernames for screen capture.
 - Live streams and VODs. English and Russian interface.
 
 ## Install
@@ -60,9 +64,13 @@ What changed between versions: [CHANGELOG.md](CHANGELOG.md).
 **Возможности**
 
 - **Два чата в одной колонке.** Размер меняется перетаскиванием разделителя, любой чат можно скрыть или открыть в отдельном окне.
-- **Правила** по нику, роли (стример, модераторы, VIP, подтверждённые, подписчики, команда Twitch, чат-боты), названию значка или ключевому слову. Правило показывает (+) или скрывает (−) сообщения, скрытие важнее. Правило можно выключить, не удаляя.
+- **Правила** по нику, роли (стример, модераторы, VIP, подтверждённые, подписчики, команда Twitch, чат-боты), названию значка или ключевому слову. Слово ищется как часть текста, целое слово, регулярное выражение или упоминание вас. К правилу можно добавить условия «и ещё», например «Модератор» и упоминание вас. Правило показывает (+) или скрывает (−) сообщения, скрытие важнее. Правило можно выключить, не удаляя, а счётчик показывает, сколько сообщений оно поймало.
+- **Оповещения** о новых сообщениях фильтрованного чата (или только отмеченных правил): звук и/или уведомление на рабочем столе.
+- **Быстрое добавление из чата:** наведите на сообщение, чтобы показывать или скрывать его автора.
 - **Наборы правил.** Набор можно привязать к каналам — он включится сам при просмотре их трансляций. Наборы копируются в буфер обмена и импортируются на другом устройстве.
 - **Работает как обычный чат.** Значки, смайлы, карточки пользователей, меню сообщения и таймкоды VOD. Leaderboard и закреплённые сообщения остаются над фильтрованным чатом.
+- **История и экспорт.** Подходящие сообщения остаются после перезагрузки страницы, с разделителями по дням. Фильтрованный чат можно скопировать текстом или сохранить в .txt / .csv.
+- **Удобства.** Фильтрованный чат может сворачиваться, когда сообщений нет; ники можно размыть для записи экрана.
 
 **Установка:** расширение опубликовано в Chrome Web Store — **[установить](https://chromewebstore.google.com/detail/chat-filter-for-twitch/mdkiolpdbimnpdjglhjlbhmfedjdbebm)**, обновления будут приходить автоматически. Чтобы запустить самый свежий код из репозитория: скачайте его, откройте `chrome://extensions`, включите **Режим разработчика**, нажмите **Загрузить распакованное расширение** и выберите папку проекта.
 

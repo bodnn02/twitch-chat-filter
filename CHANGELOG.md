@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.12.0
+- Keyword rules match a part of the text, a whole word, a regular expression or a mention (@name; empty — mentions of you)
+- "And also" conditions: a rule can require up to two more conditions, e.g. Moderator and a mention of you
+- Notifications about new messages of the filtered chat: a sound and/or a desktop notification when the Twitch tab is in the background (both off by default; the permission is asked only when you turn desktop notifications on). "Notify about": all messages of the filtered chat, or only rules marked "Notify about new messages"
+- Quick add from the chat: hover a message in the original or the filtered chat and show or hide this user with one click. The button sits next to Twitch's own message menu ("⋮"), or on the username line when there is none
+- Exported messages start with a link to the stream (the recording on VOD pages)
+- Notifications also work when the Twitch tab is in the background or the browser is minimized: Twitch does not draw new chat messages then, so the extension reads the chat of the channel from the Twitch chat server as an anonymous guest until you come back to the tab
+- "Test" button for desktop notifications in Settings
+- Match counters: each rule shows how many messages it matched and when it last did
+- Send status: the message input outline shows whether your message reached the chat
+- The extension menu picks up rules added from the chat while it is open
+
+## v1.11.0
+- Filtered chat history: matching messages stay after reloading the page (up to 1000 per channel, stored only in the extension), with date separators. Saved messages are filtered again when the rules change. Can be turned off or cleared in Settings
+- Export the filtered chat: copy as text or save as .txt / .csv (button in the filtered chat header)
+- New setting "Collapse when quiet": the filtered chat shrinks to its header after 5 minutes without matching messages and expands with the next one
+- New setting "Hide usernames": names and mentions in the filtered chat are blurred for screen capture
+- On VOD pages the preset bound to the channel is used (the channel is taken from the page)
+- After an extension update, open Twitch tabs get the new version right away: settings changes work without reloading the page
+
 ## v1.10.0
 - Pinned messages and Twitch notifications (subscriptions, tips) are shown above the filtered chat together with the leaderboard
 - Message time is shown inside the message line, short by default (11:23); the full date and time appear on hover

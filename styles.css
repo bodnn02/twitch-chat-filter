@@ -225,6 +225,26 @@
     display: none;
 }
 
+/* Auto-collapse: no matching messages for a while, only the header is left.
+   A click on the header expands it */
+#twitch-dual-chat-container.filtered-collapsed:not(.filtered-hidden) #twitch-filter-chat {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+}
+
+#twitch-dual-chat-container.filtered-collapsed .twitch-filter-messages,
+#twitch-dual-chat-container.filtered-collapsed #twitch-chat-resizer {
+    display: none;
+}
+
+#twitch-dual-chat-container.filtered-collapsed:not(.original-hidden) #twitch-original-chat {
+    flex: 1 1 auto !important;
+}
+
+#twitch-dual-chat-container.filtered-collapsed .twitch-filter-header {
+    cursor: pointer;
+}
+
 /* Both chats hidden: the input stays at the bottom of the column */
 #twitch-dual-chat-container.filtered-hidden.original-hidden #twitch-original-chat {
     margin-top: auto;
@@ -309,6 +329,34 @@
     cursor: default;
 }
 
+/* Day separator: messages from the history of previous days */
+.twitch-filter-date {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 12px;
+    color: var(--tcf-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.twitch-filter-date::before,
+.twitch-filter-date::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background-color: var(--tcf-border);
+}
+
+/* Hidden usernames for screen capture: names and mentions are blurred */
+.twitch-filter-hide-names .twitch-filter-message [data-a-target="chat-message-username"],
+.twitch-filter-hide-names .twitch-filter-message .chat-author__display-name,
+.twitch-filter-hide-names .twitch-filter-message .chat-author__intl-login,
+.twitch-filter-hide-names .twitch-filter-message .mention-fragment {
+    filter: blur(5px);
+    user-select: none;
+}
+
 /* --- Message tooltip and menu ------------------------------------------------ */
 
 .twitch-filter-hovercard,
@@ -361,10 +409,69 @@
     cursor: pointer;
 }
 
-.twitch-filter-menu button:hover,
+.twitch-filter-menu button:hover:not(:disabled),
 .twitch-filter-menu button:focus-visible {
     background: var(--tcf-surface-hover);
     outline: none;
+}
+
+.twitch-filter-menu button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.twitch-filter-menu-hint {
+    padding: 4px 10px 6px;
+    color: var(--tcf-text-muted);
+    font-size: 12px;
+}
+
+/* Quick add: a button over the hovered message (show / hide this user) */
+.twitch-filter-quick {
+    position: fixed;
+    z-index: 10000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--tcf-border);
+    border-radius: 4px;
+    background: var(--tcf-surface);
+    color: var(--tcf-text-muted);
+    box-shadow: var(--tcf-shadow);
+    cursor: pointer;
+}
+
+.twitch-filter-quick:hover,
+.twitch-filter-quick:focus-visible {
+    color: var(--tcf-text);
+    border-color: var(--tcf-accent);
+    outline: none;
+}
+
+.twitch-filter-quick[hidden] {
+    display: none;
+}
+
+/* --- Send status of your message --------------------------------------------------
+   The outline of the message input: waiting, sent, not confirmed */
+
+#twitch-dual-chat-container .chat-input [data-a-target="chat-input"] {
+    transition: box-shadow 0.2s;
+}
+
+#twitch-dual-chat-container.twitch-filter-send-pending .chat-input [data-a-target="chat-input"] {
+    box-shadow: 0 0 0 2px #7a7a85 !important;
+}
+
+#twitch-dual-chat-container.twitch-filter-send-sent .chat-input [data-a-target="chat-input"] {
+    box-shadow: 0 0 0 2px #00c46a !important;
+}
+
+#twitch-dual-chat-container.twitch-filter-send-failed .chat-input [data-a-target="chat-input"] {
+    box-shadow: 0 0 0 2px #ff9f1a !important;
 }
 
 /* --- Scrollbars ----------------------------------------------------------------- */

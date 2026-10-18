@@ -172,6 +172,13 @@
             background-color: var(--surface-hover);
         }
 
+        .btn.small {
+            flex-shrink: 0;
+            height: 26px;
+            padding: 0 8px;
+            font-size: 12px;
+        }
+
         .switch {
             position: relative;
             flex-shrink: 0;
@@ -571,6 +578,60 @@
             color: var(--text-faint);
         }
 
+        /* A regular expression and a mention have their own marks instead of quotes */
+        .rule[data-mode="regex"] .rule-value-text::before,
+        .rule[data-mode="regex"] .rule-value-text::after,
+        .rule[data-mode="mention"] .rule-value-text::before,
+        .rule[data-mode="mention"] .rule-value-text::after {
+            content: none;
+        }
+
+        .rule-value-text code {
+            font: inherit;
+        }
+
+        /* Small tags after the value: "whole word", "regex", notifications */
+        .rule-tag {
+            flex-shrink: 0;
+            padding: 0 5px;
+            border-radius: 4px;
+            background-color: var(--surface-hover);
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 600;
+            line-height: 16px;
+        }
+
+        .rule-bell {
+            display: inline-flex;
+            flex-shrink: 0;
+            color: var(--accent);
+        }
+
+        /* Extra conditions and match counter under the value */
+        .rule-meta {
+            display: flex;
+            gap: 6px;
+            overflow: hidden;
+            color: var(--text-muted);
+            font-size: 11.5px;
+            white-space: nowrap;
+        }
+
+        .rule-meta > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rule-conditions {
+            color: var(--text);
+        }
+
+        .rule-stats {
+            flex-shrink: 0;
+            color: var(--text-faint);
+        }
+
         .rule-value mark {
             background: none;
             color: var(--accent);
@@ -911,6 +972,11 @@
             visibility: visible;
         }
 
+        /* Notifications are on, but nothing can trigger them */
+        .setting-hint.is-warning {
+            color: #ff9f1a;
+        }
+
         .language-code {
             margin-left: auto;
             padding-left: 12px;
@@ -987,6 +1053,81 @@
 
         .field-error:empty {
             display: none;
+        }
+
+        /* Extra conditions in the rule editor: type, value, remove */
+        .conditions {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .conditions:not(:empty) {
+            margin-bottom: 6px;
+        }
+
+        .condition {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .condition-and {
+            flex-shrink: 0;
+            width: 18px;
+            color: var(--text-faint);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .condition select.input {
+            flex: 0 0 132px;
+            min-width: 0;
+        }
+
+        .condition .input:not(select),
+        .condition select.condition-role {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .add-condition {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .add-condition[hidden] {
+            display: none;
+        }
+
+        /* Checkbox with a label and a hint */
+        .check-field {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .check-field input {
+            margin-top: 2px;
+        }
+
+        .check-field[hidden] {
+            display: none;
+        }
+
+        .check-text {
+            display: flex;
+            flex-direction: column;
+            font-weight: 600;
+        }
+
+        .check-text .field-hint {
+            margin: 2px 0 0;
+            font-weight: 400;
         }
 
         .segmented {
@@ -1307,6 +1448,82 @@
                 </div>
             </section>
 
+            <section class="settings-group" aria-labelledby="filteredChatTitle">
+                <h2 class="settings-group-title" id="filteredChatTitle" data-i18n="filteredChatGroup"></h2>
+                <div class="settings-card">
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="historyLabel" data-i18n="historyLabel"></span>
+                            <span class="setting-hint" id="historyHint" data-i18n="historyHint"></span>
+                        </div>
+                        <button type="button" id="clearHistoryBtn" class="btn ghost small" data-i18n="clearHistory"></button>
+                        <button type="button" id="historySwitch" class="switch" role="switch" aria-checked="true"
+                            aria-labelledby="historyLabel" aria-describedby="historyHint"></button>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="autoCollapseLabel" data-i18n="autoCollapseLabel"></span>
+                            <span class="setting-hint" id="autoCollapseHint" data-i18n="autoCollapseHint"></span>
+                        </div>
+                        <button type="button" id="autoCollapseSwitch" class="switch" role="switch" aria-checked="false"
+                            aria-labelledby="autoCollapseLabel" aria-describedby="autoCollapseHint"></button>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="hideNamesLabel" data-i18n="hideNamesLabel"></span>
+                            <span class="setting-hint" id="hideNamesHint" data-i18n="hideNamesHint"></span>
+                        </div>
+                        <button type="button" id="hideNamesSwitch" class="switch" role="switch" aria-checked="false"
+                            aria-labelledby="hideNamesLabel" aria-describedby="hideNamesHint"></button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="settings-group" aria-labelledby="notifyTitle">
+                <h2 class="settings-group-title" id="notifyTitle" data-i18n="notifyGroup"></h2>
+                <div class="settings-card">
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="notifyScopeLabel" data-i18n="notifyScopeLabel"></span>
+                            <span class="setting-hint" id="notifyWarning"></span>
+                        </div>
+                        <button type="button" id="notifyScopeBtn" class="dropdown-btn" aria-haspopup="menu"
+                            aria-expanded="false" aria-controls="choiceMenu"
+                            aria-labelledby="notifyScopeLabel notifyScopeName">
+                            <span id="notifyScopeName"></span>
+                            <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true">
+                                <path fill="currentColor" d="m5 7 5 5 5-5H5Z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="notifySoundLabel" data-i18n="notifySoundLabel"></span>
+                            <span class="setting-hint" id="notifySoundHint" data-i18n="notifySoundHint"></span>
+                        </div>
+                        <button type="button" id="notifySoundSwitch" class="switch" role="switch" aria-checked="false"
+                            aria-labelledby="notifySoundLabel" aria-describedby="notifySoundHint"></button>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="notifyDesktopLabel" data-i18n="notifyDesktopLabel"></span>
+                            <span class="setting-hint" id="notifyDesktopHint" data-i18n="notifyDesktopHint"></span>
+                        </div>
+                        <button type="button" id="testNotifyBtn" class="btn ghost small" data-i18n="testNotify"></button>
+                        <button type="button" id="notifyDesktopSwitch" class="switch" role="switch" aria-checked="false"
+                            aria-labelledby="notifyDesktopLabel" aria-describedby="notifyDesktopHint"></button>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-text">
+                            <span class="setting-label" id="sendStatusLabel" data-i18n="sendStatusLabel"></span>
+                            <span class="setting-hint" id="sendStatusHint" data-i18n="sendStatusHint"></span>
+                        </div>
+                        <button type="button" id="sendStatusSwitch" class="switch" role="switch" aria-checked="true"
+                            aria-labelledby="sendStatusLabel" aria-describedby="sendStatusHint"></button>
+                    </div>
+                </div>
+            </section>
+
             <section class="settings-group" aria-labelledby="aboutTitle">
                 <h2 class="settings-group-title" id="aboutTitle" data-i18n="about"></h2>
                 <div class="settings-card">
@@ -1424,6 +1641,16 @@
                 </div>
             </div>
 
+            <div class="field" id="modeField">
+                <span class="field-label" data-i18n="modeLabel"></span>
+                <div class="segmented" id="modeSeg" role="radiogroup">
+                    <button type="button" role="radio" data-mode="contains"></button>
+                    <button type="button" role="radio" data-mode="word"></button>
+                    <button type="button" role="radio" data-mode="regex"></button>
+                    <button type="button" role="radio" data-mode="mention"></button>
+                </div>
+            </div>
+
             <div class="field">
                 <span class="field-label" data-i18n="actionLabel"></span>
                 <div class="segmented" id="actionSeg" role="radiogroup">
@@ -1452,6 +1679,22 @@
                 <div class="roles" id="rolePicker"></div>
                 <p class="field-error" id="roleError" aria-live="polite"></p>
             </div>
+
+            <div class="field" id="conditionsField">
+                <span class="field-label" data-i18n="conditionsLabel"></span>
+                <div class="conditions" id="conditionList"></div>
+                <button type="button" class="btn ghost small add-condition" id="addConditionBtn"></button>
+                <p class="field-hint" id="conditionsHint" data-i18n="conditionsHint"></p>
+                <p class="field-error" id="conditionError" aria-live="polite"></p>
+            </div>
+
+            <label class="check-field" id="notifyField">
+                <input type="checkbox" id="notifyInput" />
+                <span class="check-text">
+                    <span data-i18n="notifyLabel"></span>
+                    <span class="field-hint" data-i18n="notifyHint"></span>
+                </span>
+            </label>
 
             <div class="field">
                 <label class="field-label" for="noteInput" data-i18n="noteLabel"></label>
